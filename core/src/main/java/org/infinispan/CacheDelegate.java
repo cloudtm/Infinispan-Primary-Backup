@@ -610,4 +610,13 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
          return this;
       }
    }
+
+   private static boolean operationPermitted(Configuration conf, EmbeddedCacheManager cacheManager, InvocationContext ctx){
+
+       if(ctx.isInTxScope() && conf.isPassiveReplication())
+           return cacheManager.isCoordinator();
+
+       return true;
+
+   }
 }
