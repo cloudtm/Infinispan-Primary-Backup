@@ -422,6 +422,21 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
    public void setCacheModeString(String cacheMode) {
       setCacheMode(cacheMode);
    }
+   //SEBDIE
+   public void setReplicasPolicy(ReplicasPolicyMode policy){
+      this.clustering.setReplicasPolicy(policy);
+   }
+   //SEBDIE
+   public void setReplicasPolicy(String policy){
+
+      if (policy == null) throw new ConfigurationException("replicasPolicy mode cannot be null", "ReplicasPolicyType");
+      this.clustering.setReplicasPolicy(ReplicasPolicyType.valueOf(uc(policy)));
+
+   }
+   //SEBDIE
+   public boolean isPassiveReplication(){
+       return this.clustering.isPassiveReplication();
+   }
 
    /**
     * Eviction thread wake up interval, in milliseconds.
@@ -1365,6 +1380,9 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
 
       @XmlElement
       protected HashType hash = new HashType();
+      //SEBDIE
+      @XmlElement
+      protected ReplicasPolicyType replicasPolicy = new ReplicasPolicyType();
 
       public ClusteringType(CacheMode mode) {
          this.mode = mode;
@@ -1377,6 +1395,16 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
       public void setMode(CacheMode mode) {
          testImmutability("mode");
          this.mode = mode;
+      }
+      //SEBDIE
+      public void setReplicasPolicy(ReplicasPolicyMode policy){
+         testImmutability("replicasPolicy");
+         this.replicasPolicy.setMode(policy);
+
+      }
+      //SEBDIE
+      public boolean isPassiveReplication(){
+          return (this.replicasPolicy.mode==ReplicasPolicyMode.PASSIVE_REPLICATION);
       }
 
       public boolean isSynchronous() {
@@ -2550,5 +2578,50 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
                return this;
          }
       }
+   }
+   //SEBDIE
+   @XmlAccessorType(XmlAccessType.PROPERTY)
+   public static class ReplicasPolicyType extends AbstractNamedCacheConfigurationBean{
+
+      @Dynamic
+      protected ReplicasPolicyMode mode;
+
+      public ReplicasPolicyType(){
+          this.mode=ReplicasPolicyMode.PC;
+      }
+
+      @XmlAttribute
+      public void setMode(ReplicasPolicyMode value){
+          testImmutability("mode");
+          this.mode=value;
+      }
+
+      public static ReplicasPolicyMode valueOf(String value){
+          return ReplicasPolicyMode.valueOf(value);
+      }
+
+      @Override
+      public boolean equals(Object o) {
+         if (this == o) return true;
+         if (!(o instanceof ReplicasPolicyType)) return false;
+
+         ReplicasPolicyType that = (ReplicasPolicyType) o;
+
+         return this.mode==that.mode;
+      }
+
+      @Override
+      public int hashCode() {
+         return 31*this.mode.hashCode();
+      }
+
+
+   }
+
+   public static enum ReplicasPolicyMode{
+       /*Default policy (2 or 1 phase commit) */
+       PC,
+       /*Passive Replication policy*/
+       PASSIVE_REPLICATION;
    }
 }

@@ -174,6 +174,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final boolean remove(Object key, Object value) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       RemoveCommand command = commandsFactory.buildRemoveCommand(key, value);
       return (Boolean) invoker.invoke(ctx, command);
    }
@@ -211,12 +213,16 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final V remove(Object key) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       RemoveCommand command = commandsFactory.buildRemoveCommand(key, null);
       return (V) invoker.invoke(ctx, command);
    }
 
    public final void clear() {
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ClearCommand command = commandsFactory.buildClearCommand();
       invoker.invoke(ctx, command);
    }
@@ -268,6 +274,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final void evict(K key) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(true);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       EvictCommand command = commandsFactory.buildEvictCommand(key);
       invoker.invoke(ctx, command);
    }
@@ -300,6 +308,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
 
    public boolean lock(K... keys) {
       assertKeyNotNull(keys);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, getInvocationContext(false))) throw new PassiveReplicationException("Operation not permitted");
       return lock(Arrays.asList(keys));
    }
 
@@ -307,6 +317,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
       if (keys == null || keys.isEmpty()) {
          throw new IllegalArgumentException("Cannot lock empty list of keys");
       }
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, getInvocationContext(false))) throw new PassiveReplicationException("Operation not permitted");
       LockControlCommand command = commandsFactory.buildLockControlCommand(keys, false);
       return (Boolean) invoker.invoke(getInvocationContext(false), command);
    }
@@ -440,6 +452,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final V put(K key, V value, long lifespan, TimeUnit lifespanUnit, long maxIdleTime, TimeUnit idleTimeUnit) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx))throw new PassiveReplicationException("Operation not permitted");
       PutKeyValueCommand command = commandsFactory.buildPutKeyValueCommand(key, value, lifespanUnit.toMillis(lifespan), idleTimeUnit.toMillis(maxIdleTime));
       return (V) invoker.invoke(ctx, command);
    }
@@ -448,6 +462,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final V putIfAbsent(K key, V value, long lifespan, TimeUnit lifespanUnit, long maxIdleTime, TimeUnit idleTimeUnit) {
       assertKeyNotNull(key);
       InvocationContext context = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, context)) throw new PassiveReplicationException("Operation not permitted");
       PutKeyValueCommand command = commandsFactory.buildPutKeyValueCommand(key, value, lifespanUnit.toMillis(lifespan), idleTimeUnit.toMillis(maxIdleTime));
       command.setPutIfAbsent(true);
       return (V) invoker.invoke(context, command);
@@ -455,6 +471,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
 
    public final void putAll(Map<? extends K, ? extends V> map, long lifespan, TimeUnit lifespanUnit, long maxIdleTime, TimeUnit idleTimeUnit) {
       assertKeysNotNull(map);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, getInvocationContext(false))) throw new PassiveReplicationException("Operation not permitted");
       PutMapCommand command = commandsFactory.buildPutMapCommand(map, lifespanUnit.toMillis(lifespan), idleTimeUnit.toMillis(maxIdleTime));
       invoker.invoke(getInvocationContext(false), command);
    }
@@ -463,6 +481,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final V replace(K key, V value, long lifespan, TimeUnit lifespanUnit, long maxIdleTime, TimeUnit idleTimeUnit) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ReplaceCommand command = commandsFactory.buildReplaceCommand(key, null, value, lifespanUnit.toMillis(lifespan), idleTimeUnit.toMillis(maxIdleTime));
       return (V) invoker.invoke(ctx, command);
 
@@ -471,6 +491,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final boolean replace(K key, V oldValue, V value, long lifespan, TimeUnit lifespanUnit, long maxIdleTime, TimeUnit idleTimeUnit) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ReplaceCommand command = commandsFactory.buildReplaceCommand(key, oldValue, value, lifespanUnit.toMillis(lifespan), idleTimeUnit.toMillis(maxIdleTime));
       return (Boolean) invoker.invoke(ctx, command);
    }
@@ -504,6 +526,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final NotifyingFuture<V> putAsync(K key, V value, long lifespan, TimeUnit lifespanUnit, long maxIdle, TimeUnit maxIdleUnit) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       PutKeyValueCommand command = commandsFactory.buildPutKeyValueCommand(key, value, lifespanUnit.toMillis(lifespan), maxIdleUnit.toMillis(maxIdle));
       return wrapInFuture(invoker.invoke(ctx, command));
@@ -512,6 +536,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final NotifyingFuture<Void> putAllAsync(Map<? extends K, ? extends V> data, long lifespan, TimeUnit lifespanUnit, long maxIdle, TimeUnit maxIdleUnit) {
       assertKeysNotNull(data);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       PutMapCommand command = commandsFactory.buildPutMapCommand(data, lifespanUnit.toMillis(lifespan), maxIdleUnit.toMillis(maxIdle));
       return wrapInFuture(invoker.invoke(ctx, command));
@@ -519,6 +545,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
 
    public final NotifyingFuture<Void> clearAsync() {
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       ClearCommand command = commandsFactory.buildClearCommand();
       return wrapInFuture(invoker.invoke(ctx, command));
@@ -527,6 +555,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final NotifyingFuture<V> putIfAbsentAsync(K key, V value, long lifespan, TimeUnit lifespanUnit, long maxIdle, TimeUnit maxIdleUnit) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       PutKeyValueCommand command = commandsFactory.buildPutKeyValueCommand(key, value, lifespanUnit.toMillis(lifespan), maxIdleUnit.toMillis(maxIdle));
       command.setPutIfAbsent(true);
@@ -536,6 +566,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final NotifyingFuture<V> removeAsync(Object key) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       RemoveCommand command = commandsFactory.buildRemoveCommand(key, null);
       return wrapInFuture(invoker.invoke(ctx, command));
@@ -544,6 +576,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final NotifyingFuture<Boolean> removeAsync(Object key, Object value) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       RemoveCommand command = commandsFactory.buildRemoveCommand(key, value);
       return wrapInFuture(invoker.invoke(ctx, command));
@@ -552,6 +586,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final NotifyingFuture<V> replaceAsync(K key, V value, long lifespan, TimeUnit lifespanUnit, long maxIdle, TimeUnit maxIdleUnit) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       ReplaceCommand command = commandsFactory.buildReplaceCommand(key, null, value, lifespanUnit.toMillis(lifespan), maxIdleUnit.toMillis(maxIdle));
       return wrapInFuture(invoker.invoke(ctx, command));
@@ -560,6 +596,8 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    public final NotifyingFuture<Boolean> replaceAsync(K key, V oldValue, V newValue, long lifespan, TimeUnit lifespanUnit, long maxIdle, TimeUnit maxIdleUnit) {
       assertKeyNotNull(key);
       InvocationContext ctx = getInvocationContext(false);
+      //SEBDIE
+      if(!operationPermitted(this.config, this.cacheManager, ctx)) throw new PassiveReplicationException("Operation not permitted");
       ctx.setUseFutureReturnType(true);
       ReplaceCommand command = commandsFactory.buildReplaceCommand(key, oldValue, newValue, lifespanUnit.toMillis(lifespan), maxIdleUnit.toMillis(maxIdle));
       return wrapInFuture(invoker.invoke(ctx, command));
@@ -610,7 +648,7 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
          return this;
       }
    }
-
+   //SEBDIE
    private static boolean operationPermitted(Configuration conf, EmbeddedCacheManager cacheManager, InvocationContext ctx){
 
        if(ctx.isInTxScope() && conf.isPassiveReplication())
