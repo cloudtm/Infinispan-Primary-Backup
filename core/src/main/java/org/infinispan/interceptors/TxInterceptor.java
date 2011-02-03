@@ -6,6 +6,7 @@ import org.infinispan.commands.VisitableCommand;
 import org.infinispan.commands.control.LockControlCommand;
 import org.infinispan.commands.read.GetKeyValueCommand;
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.commands.write.ClearCommand;
@@ -104,6 +105,24 @@ public class TxInterceptor extends CommandInterceptor {
       if (command.isOnePhaseCommit()) {
          transactionLog.logOnePhaseCommit(ctx.getGlobalTransaction(), command.getModifications());
       }
+      return result;
+   }
+        //SEBDIE
+   @Override
+   public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
+      if (!ctx.isOriginLocal()) {
+         // replay modifications
+         for (VisitableCommand modification : command.getModifications()) {
+            VisitableCommand toReplay = getCommandToReplay(modification);
+            if (toReplay != null) {
+               invokeNextInterceptor(ctx, toReplay);
+            }
+         }
+      }
+
+
+      Object result = invokeNextInterceptor(ctx, command);
+
       return result;
    }
 

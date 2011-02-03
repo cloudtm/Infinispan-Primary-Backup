@@ -24,10 +24,7 @@ package org.infinispan.interceptors;
 import org.infinispan.CacheException;
 import org.infinispan.commands.control.LockControlCommand;
 import org.infinispan.commands.read.GetKeyValueCommand;
-import org.infinispan.commands.tx.AbstractTransactionBoundaryCommand;
-import org.infinispan.commands.tx.CommitCommand;
-import org.infinispan.commands.tx.PrepareCommand;
-import org.infinispan.commands.tx.RollbackCommand;
+import org.infinispan.commands.tx.*;
 import org.infinispan.commands.write.ClearCommand;
 import org.infinispan.commands.write.EvictCommand;
 import org.infinispan.commands.write.InvalidateCommand;
@@ -139,6 +136,19 @@ public class LockingInterceptor extends CommandInterceptor {
          if (command.isOnePhaseCommit())
             cleanupLocks(ctx, true);
       }
+   }
+     //SEBDIE
+   @Override
+   public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
+
+      /*
+       * We are in Primary Backup replication context. So both master and slave can commit
+        */
+      Object result = invokeNextInterceptor(ctx, command);
+
+      cleanupLocks(ctx, true);
+
+      return result;
    }
 
    // read commands

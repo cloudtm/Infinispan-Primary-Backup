@@ -22,6 +22,7 @@
 package org.infinispan.interceptors;
 
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.commands.write.ClearCommand;
@@ -61,6 +62,15 @@ public class ReplicationInterceptor extends BaseRpcInterceptor {
       if (shouldInvokeRemoteTxCommand(ctx)) {
          boolean async = configuration.getCacheMode() == Configuration.CacheMode.REPL_ASYNC;
          rpcManager.broadcastRpcCommand(command, !async, false);
+      }
+      return retVal;
+   }
+     //SEBDIE
+   @Override
+   public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
+      Object retVal = invokeNextInterceptor(ctx, command);
+      if (ctx.isOriginLocal() && command.hasModifications()) {
+         rpcManager.broadcastRpcCommand(command, true, false);
       }
       return retVal;
    }

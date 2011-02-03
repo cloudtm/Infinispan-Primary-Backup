@@ -22,6 +22,7 @@
 package org.infinispan.interceptors;
 
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.context.impl.TxInvocationContext;
@@ -47,6 +48,13 @@ public class NotificationInterceptor extends CommandInterceptor {
    public Object visitPrepareCommand(TxInvocationContext ctx, PrepareCommand command) throws Throwable {
       Object retval = invokeNextInterceptor(ctx, command);
       if (command.isOnePhaseCommit()) notifier.notifyTransactionCompleted(ctx.getGlobalTransaction(), true, ctx);
+      return retval;
+   }
+       //SEBDIE
+   @Override
+   public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
+      Object retval = invokeNextInterceptor(ctx, command);
+      notifier.notifyTransactionCompleted(ctx.getGlobalTransaction(), true, ctx);
       return retval;
    }
 

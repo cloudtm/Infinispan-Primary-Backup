@@ -25,6 +25,7 @@ package org.infinispan.interceptors;
 import org.infinispan.commands.VisitableCommand;
 import org.infinispan.commands.control.LockControlCommand;
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.context.InvocationContext;
@@ -44,6 +45,12 @@ public class CallInterceptor extends CommandInterceptor {
    @Override
    public Object visitPrepareCommand(TxInvocationContext ctx, PrepareCommand command) throws Throwable {
       if (trace) log.trace("Suppressing invocation of method handlePrepareCommand.");
+      return null;
+   }
+     //SEBDIE
+   @Override
+   public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
+      if (trace) log.trace("Suppressing invocation of method handlePassiveReplicationCommand.");
       return null;
    }
 

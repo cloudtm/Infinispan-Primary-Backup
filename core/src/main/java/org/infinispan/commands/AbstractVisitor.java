@@ -28,6 +28,7 @@ import org.infinispan.commands.read.KeySetCommand;
 import org.infinispan.commands.read.SizeCommand;
 import org.infinispan.commands.read.ValuesCommand;
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.commands.write.ClearCommand;
@@ -120,6 +121,10 @@ public abstract class AbstractVisitor implements Visitor {
    
    public Object visitInvalidateL1Command(InvocationContext ctx, InvalidateL1Command invalidateL1Command) throws Throwable {
 	   return visitInvalidateCommand(ctx, invalidateL1Command);
+   }
+   //SEBDIE
+   public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
+      return handleDefault(ctx, command);
    }
 
    /**
