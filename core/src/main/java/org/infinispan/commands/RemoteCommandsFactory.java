@@ -9,6 +9,7 @@ import org.infinispan.commands.remote.ClusteredGetCommand;
 import org.infinispan.commands.remote.MultipleRpcCommand;
 import org.infinispan.commands.remote.SingleRpcCommand;
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.commands.write.ClearCommand;
@@ -82,6 +83,9 @@ public class RemoteCommandsFactory {
             break;
          case PrepareCommand.COMMAND_ID:
             command = new PrepareCommand();
+            break;
+         case PassiveReplicationCommand.COMMAND_ID:
+            command = new PassiveReplicationCommand();  //SEBDIE
             break;
          case CommitCommand.COMMAND_ID:
             command = new CommitCommand();

@@ -36,6 +36,7 @@ import org.infinispan.commands.remote.ClusteredGetCommand;
 import org.infinispan.commands.remote.MultipleRpcCommand;
 import org.infinispan.commands.remote.SingleRpcCommand;
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.commands.write.ClearCommand;
@@ -270,6 +271,16 @@ public class CommandsFactoryImpl implements CommandsFactory {
                DldGlobalTransaction transaction = (DldGlobalTransaction) pc.getGlobalTransaction();
                transaction.setLocksHeldAtOrigin(pc.getAffectedKeys());
             }
+            break;
+         case PassiveReplicationCommand.COMMAND_ID:
+            PassiveReplicationCommand prc = (PassiveReplicationCommand) c;       //SEBDIE
+            prc.init(interceptorChain, icc, txTable);
+            prc.initialize(notifier);
+            if (prc.getModifications() != null)
+               for (ReplicableCommand nested : prc.getModifications())  {
+                  initializeReplicableCommand(nested, false);
+               }
+            prc.markTransactionAsRemote(isRemote);     //Do we have to add DeadlockDetection as in PrepareCOmmand???????
             break;
          case CommitCommand.COMMAND_ID:
             CommitCommand commitCommand = (CommitCommand) c;
