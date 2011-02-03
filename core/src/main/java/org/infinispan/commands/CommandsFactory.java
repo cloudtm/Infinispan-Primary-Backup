@@ -33,6 +33,7 @@ import org.infinispan.commands.remote.ClusteredGetCommand;
 import org.infinispan.commands.remote.MultipleRpcCommand;
 import org.infinispan.commands.remote.SingleRpcCommand;
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.commands.write.ClearCommand;
@@ -180,6 +181,14 @@ public interface CommandsFactory {
     * @return a PrepareCommand
     */
    PrepareCommand buildPrepareCommand(GlobalTransaction gtx, List<WriteCommand> modifications, boolean onePhaseCommit);
+    //SEBDIE
+   /**
+    * Builds a PassiveReplicationCommand
+    * @param gtx global transaction associated with the passive replication
+    * @param modifications list of modifications
+    * @return a PassiveReplicationCommand
+    */
+   PassiveReplicationCommand buildPassiveReplicationCommand(GlobalTransaction gtx, List<WriteCommand> modifications);
 
    /**
     * Builds a CommitCommand

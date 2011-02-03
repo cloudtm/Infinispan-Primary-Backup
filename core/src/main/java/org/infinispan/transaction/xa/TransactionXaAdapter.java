@@ -67,8 +67,13 @@ public class TransactionXaAdapter implements XAResource {
          if (trace) log.trace("Received prepare for tx: %s. Skipping call as 1PC will be used.", xid);
          return XA_OK;
       }
-
-      PrepareCommand prepareCommand = commandsFactory.buildPrepareCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications(), configuration.isOnePhaseCommit());
+      PrepareCommand prepareCommand=null;
+      if(configuration.isPassiveReplication()){//Primary backup replication context
+            prepareCommand = commandsFactory.buildPassiveReplicationCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications());
+      }
+      else{
+          prepareCommand = commandsFactory.buildPrepareCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications(), configuration.isOnePhaseCommit());
+      }
       if (trace) log.trace("Sending prepare command through the chain: " + prepareCommand);
 
       LocalTxInvocationContext ctx = icc.createTxInvocationContext();
@@ -97,6 +102,11 @@ public class TransactionXaAdapter implements XAResource {
 
       if (trace) log.trace("committing transaction %s" + localTransaction.getGlobalTransaction());
       try {
+          //SEBDIE
+         if(configuration.isPassiveReplication()){//In Passive Replication the commit is performed in the prepare phase.
+             return;
+         }
+
          LocalTxInvocationContext ctx = icc.createTxInvocationContext();
          ctx.setLocalTransaction(localTransaction);
          if (configuration.isOnePhaseCommit() || isOnePhase) {

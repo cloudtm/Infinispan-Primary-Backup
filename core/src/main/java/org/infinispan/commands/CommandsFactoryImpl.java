@@ -191,6 +191,12 @@ public class CommandsFactoryImpl implements CommandsFactory {
       command.setCacheName(cacheName);
       return command;
    }
+     //SEBDIE
+   public PassiveReplicationCommand buildPassiveReplicationCommand(GlobalTransaction gtx, List<WriteCommand> modifications) {
+      PassiveReplicationCommand command = new PassiveReplicationCommand(gtx, modifications);
+      command.setCacheName(cacheName);
+      return command;
+   }
 
    public CommitCommand buildCommitCommand(GlobalTransaction gtx) {
       CommitCommand commitCommand = new CommitCommand(gtx);
