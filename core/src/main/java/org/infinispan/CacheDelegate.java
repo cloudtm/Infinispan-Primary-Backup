@@ -651,7 +651,7 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    //SEBDIE
    private static boolean operationPermitted(Configuration conf, EmbeddedCacheManager cacheManager, InvocationContext ctx){
 
-       if(ctx.isInTxScope() && conf.isPassiveReplication())
+       if(conf.isPassiveReplication())
            return cacheManager.isCoordinator();
 
        return true;
