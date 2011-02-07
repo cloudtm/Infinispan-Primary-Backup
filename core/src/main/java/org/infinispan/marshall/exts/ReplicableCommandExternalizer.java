@@ -32,6 +32,7 @@ import org.infinispan.commands.remote.ClusteredGetCommand;
 import org.infinispan.commands.remote.MultipleRpcCommand;
 import org.infinispan.commands.remote.SingleRpcCommand;
 import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
 import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.commands.tx.RollbackCommand;
 import org.infinispan.commands.write.ClearCommand;
@@ -115,6 +116,7 @@ public class ReplicableCommandExternalizer extends AbstractExternalizer<Replicab
             ClearCommand.class, EvictCommand.class,
             InvalidateCommand.class, InvalidateL1Command.class,
             PutKeyValueCommand.class, PutMapCommand.class,
-            RemoveCommand.class, ReplaceCommand.class);
+            RemoveCommand.class, ReplaceCommand.class,
+            PassiveReplicationCommand.class);//SEBDIE
    }
 }
