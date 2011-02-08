@@ -69,7 +69,7 @@ public class ReplicationInterceptor extends BaseRpcInterceptor {
    @Override
    public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
       Object retVal = invokeNextInterceptor(ctx, command);
-      if (ctx.isOriginLocal() && command.hasModifications()) {
+      if (shouldInvokeRemoteTxCommand(ctx)) {
          rpcManager.broadcastRpcCommand(command, true, false);
       }
       return retVal;
