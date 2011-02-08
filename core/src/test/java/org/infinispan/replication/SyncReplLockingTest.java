@@ -59,6 +59,7 @@ public class SyncReplLockingTest extends MultipleCacheManagersTest {
    protected void createCacheManagers() throws Throwable {
       Configuration cfg = getDefaultClusteredConfig(getCacheMode(), true);
       cfg.setLockAcquisitionTimeout(500);
+      cfg.setReplicasPolicy(Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION);//SEBDIE
       createClusteredCaches(2, "testcache", cfg);
    }
 

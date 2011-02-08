@@ -8,6 +8,7 @@
 package org.infinispan.replication;
 
 import org.infinispan.AdvancedCache;
+import org.infinispan.PassiveReplicationException;
 import org.infinispan.commands.VisitableCommand;
 import org.infinispan.config.Configuration;
 import org.infinispan.context.InvocationContext;
@@ -34,7 +35,7 @@ public class ReplicationExceptionTest extends MultipleCacheManagersTest {
       Configuration configuration = getDefaultClusteredConfig(Configuration.CacheMode.REPL_SYNC,true);
       configuration.setIsolationLevel(IsolationLevel.REPEATABLE_READ);
       configuration.setLockAcquisitionTimeout(5000);
-
+      configuration.setReplicasPolicy(Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION);//SEBDIE
       createClusteredCaches(2, "replicatinExceptionTest", configuration);
    }
 
@@ -106,7 +107,7 @@ public class ReplicationExceptionTest extends MultipleCacheManagersTest {
       cache1.put("k", "v");
    }
 
-   @Test(groups = "functional", expectedExceptions = { TimeoutException.class })
+   @Test(groups = "functional", expectedExceptions = { TimeoutException.class, PassiveReplicationException.class })
    public void testLockAcquisitionTimeout() throws Exception {
       AdvancedCache cache1 = cache(0, "replicatinExceptionTest").getAdvancedCache();
       AdvancedCache cache2 = cache(1, "replicatinExceptionTest").getAdvancedCache();

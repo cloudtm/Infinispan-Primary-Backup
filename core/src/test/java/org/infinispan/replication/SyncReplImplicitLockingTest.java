@@ -61,6 +61,7 @@ public class SyncReplImplicitLockingTest extends MultipleCacheManagersTest {
       Configuration cfg = getDefaultClusteredConfig(getCacheMode(), true);
       cfg.setLockAcquisitionTimeout(500);
       cfg.setUseEagerLocking(true);
+      cfg.setReplicasPolicy(Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION);//SEBDIE
       createClusteredCaches(2, "testcache", cfg);
    }
 

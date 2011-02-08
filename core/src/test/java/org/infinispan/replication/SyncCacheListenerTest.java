@@ -42,6 +42,7 @@ public class SyncCacheListenerTest extends MultipleCacheManagersTest {
       Configuration conf = getDefaultClusteredConfig(Configuration.CacheMode.REPL_SYNC, true);
       conf.setIsolationLevel(IsolationLevel.SERIALIZABLE);
       conf.setLockAcquisitionTimeout(5000);
+      conf.setReplicasPolicy(Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION);
 
       List<Cache<Object, Object>> caches = createClusteredCaches(2, "cache", conf);
 

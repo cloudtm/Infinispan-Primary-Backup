@@ -38,6 +38,7 @@ public class SyncReplTest extends MultipleCacheManagersTest {
 
    protected void createCacheManagers() throws Throwable {
       Configuration replSync = getDefaultClusteredConfig(Configuration.CacheMode.REPL_SYNC);
+      replSync.setReplicasPolicy(Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION);//SEBDIE
       createClusteredCaches(2, "replSync", replSync);
    }
 
