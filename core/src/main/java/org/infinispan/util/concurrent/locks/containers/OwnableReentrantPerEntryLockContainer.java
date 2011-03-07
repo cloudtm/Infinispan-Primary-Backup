@@ -12,8 +12,8 @@ import java.util.concurrent.locks.Lock;
  * @since 4.0
  */
 public class OwnableReentrantPerEntryLockContainer extends AbstractPerEntryLockContainer {
-
-   private InvocationContextContainer icc;
+   //SEB
+   protected InvocationContextContainer icc;
 
    public OwnableReentrantPerEntryLockContainer(int concurrencyLevel, InvocationContextContainer icc) {
       super(concurrencyLevel);

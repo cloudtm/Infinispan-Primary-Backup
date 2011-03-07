@@ -26,17 +26,14 @@ import org.infinispan.container.entries.CacheEntry;
 import org.infinispan.context.Flag;
 import org.infinispan.context.InvocationContext;
 import org.infinispan.context.InvocationContextContainer;
+import org.infinispan.context.impl.RemoteTxInvocationContext;
 import org.infinispan.context.impl.TxInvocationContext;
 import org.infinispan.factories.annotations.Inject;
 import org.infinispan.factories.annotations.Start;
 import org.infinispan.jmx.annotations.MBean;
 import org.infinispan.jmx.annotations.ManagedAttribute;
 import org.infinispan.util.ReversibleOrderedSet;
-import org.infinispan.util.concurrent.locks.containers.LockContainer;
-import org.infinispan.util.concurrent.locks.containers.OwnableReentrantPerEntryLockContainer;
-import org.infinispan.util.concurrent.locks.containers.OwnableReentrantStripedLockContainer;
-import org.infinispan.util.concurrent.locks.containers.ReentrantPerEntryLockContainer;
-import org.infinispan.util.concurrent.locks.containers.ReentrantStripedLockContainer;
+import org.infinispan.util.concurrent.locks.containers.*;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 import org.rhq.helpers.pluginAnnotations.agent.DataType;
@@ -75,12 +72,13 @@ public class LockManagerImpl implements LockManager {
    @Start
    public void startLockManager() {
       lockContainer = configuration.isUseLockStriping() ?
-      transactionManager == null ? new ReentrantStripedLockContainer(configuration.getConcurrencyLevel()) : new OwnableReentrantStripedLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer) :
-      transactionManager == null ? new ReentrantPerEntryLockContainer(configuration.getConcurrencyLevel()) : new OwnableReentrantPerEntryLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer);
+      transactionManager == null ? new ReentrantStripedLockContainer(configuration.getConcurrencyLevel()) : configuration.isSwitchEnabled() ? new OwnableReentrantStubbornStripedLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer) : new OwnableReentrantStripedLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer) :
+      transactionManager == null ? new ReentrantPerEntryLockContainer(configuration.getConcurrencyLevel()) : configuration.isSwitchEnabled() ? new OwnableReentrantStubbornPerEntryLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer) : new OwnableReentrantPerEntryLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer);
    }
 
    public boolean lockAndRecord(Object key, InvocationContext ctx) throws InterruptedException {
-      long lockTimeout = getLockAcquisitionTimeout(ctx);
+      //SEB
+      long lockTimeout = ((ctx instanceof RemoteTxInvocationContext) && configuration.isSwitchEnabled() && ((RemoteTxInvocationContext) ctx).getReplicasPolicyMode() == Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION)? -1 : getLockAcquisitionTimeout(ctx);
       if (trace) log.trace("Attempting to lock %s with acquisition timeout of %s millis", key, lockTimeout);
       if (lockContainer.acquireLock(key, lockTimeout, MILLISECONDS) != null) {
          // successfully locked!

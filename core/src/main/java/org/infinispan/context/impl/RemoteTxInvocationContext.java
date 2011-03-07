@@ -1,6 +1,7 @@
 package org.infinispan.context.impl;
 
 import org.infinispan.commands.write.WriteCommand;
+import org.infinispan.config.Configuration;
 import org.infinispan.container.entries.CacheEntry;
 import org.infinispan.transaction.xa.GlobalTransaction;
 import org.infinispan.transaction.xa.RemoteTransaction;
@@ -20,6 +21,8 @@ public class RemoteTxInvocationContext extends AbstractTxInvocationContext {
 
 
    private RemoteTransaction remoteTransaction;
+
+   private Configuration.ReplicasPolicyMode replicationMode;
 
    public RemoteTxInvocationContext() {
    }
@@ -79,6 +82,14 @@ public class RemoteTxInvocationContext extends AbstractTxInvocationContext {
       for (Map.Entry<Object, CacheEntry> ce: lookedUpEntries.entrySet()) {
          remoteTransaction.putLookedUpEntry(ce.getKey(), ce.getValue());
       }
+   }
+   //SEB
+   public void setReplicasPolicyMode(Configuration.ReplicasPolicyMode mode){
+      replicationMode=mode;
+   }
+   //SEB
+   public Configuration.ReplicasPolicyMode getReplicasPolicyMode(){
+      return replicationMode;
    }
 
    @Override

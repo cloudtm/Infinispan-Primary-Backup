@@ -437,6 +437,10 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
    public boolean isPassiveReplication(){
        return this.clustering.isPassiveReplication();
    }
+   //SEB
+   public boolean isSwitchEnabled(){
+       return this.clustering.isSwitchEnabled();
+   }
 
    /**
     * Eviction thread wake up interval, in milliseconds.
@@ -1405,6 +1409,10 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
       //SEBDIE
       public boolean isPassiveReplication(){
           return (this.replicasPolicy.mode==ReplicasPolicyMode.PASSIVE_REPLICATION);
+      }
+      //SEB
+      public boolean isSwitchEnabled(){
+          return (this.replicasPolicy.dynamicSwitch == true);
       }
 
       public boolean isSynchronous() {
@@ -2585,9 +2593,13 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
 
       @Dynamic
       protected ReplicasPolicyMode mode;
-
+      //SEB
+      @Dynamic
+      protected Boolean dynamicSwitch;
+      //SEB
       public ReplicasPolicyType(){
           this.mode=ReplicasPolicyMode.PC;
+          this.dynamicSwitch=false;
       }
 
       @XmlAttribute
@@ -2595,11 +2607,17 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
           testImmutability("mode");
           this.mode=value;
       }
+      //SEB
+      @XmlAttribute
+      public void setDynamicSwitch(Boolean value){
+          testImmutability("dynamicSwitch");
+          this.dynamicSwitch=value;
+      }
 
       public static ReplicasPolicyMode valueOf(String value){
           return ReplicasPolicyMode.valueOf(value);
       }
-
+      //SEB
       @Override
       public boolean equals(Object o) {
          if (this == o) return true;
@@ -2607,12 +2625,12 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
 
          ReplicasPolicyType that = (ReplicasPolicyType) o;
 
-         return this.mode==that.mode;
+         return (this.mode==that.mode) && (this.dynamicSwitch == that.dynamicSwitch);
       }
-
+      //SEB
       @Override
       public int hashCode() {
-         return 31*this.mode.hashCode();
+         return 31*this.mode.hashCode() + (this.dynamicSwitch==false ? 0 :1);
       }
 
 

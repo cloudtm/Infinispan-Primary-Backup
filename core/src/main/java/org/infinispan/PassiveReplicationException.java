@@ -1,8 +1,8 @@
 package org.infinispan;
 
 /**
- * @author
- * @author
+ * @author Sebastiano Peluso
+ * @author Diego Didona
  * @since 5.0
  */
 //SEBDIE

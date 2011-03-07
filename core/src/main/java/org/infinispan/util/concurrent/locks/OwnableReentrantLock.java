@@ -109,9 +109,9 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
    public ConditionObject newCondition() {
       throw new UnsupportedOperationException("Not supported in this implementation!");
    }
-
+   //SEB
    @Override
-   protected final boolean tryAcquire(int acquires) {
+   protected  boolean tryAcquire(int acquires) {
       final Object current = currentRequestor();
       int c = getState();
       if (c == 0) {

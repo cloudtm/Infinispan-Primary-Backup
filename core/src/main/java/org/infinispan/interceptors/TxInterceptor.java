@@ -21,6 +21,7 @@ import org.infinispan.context.Flag;
 import org.infinispan.context.InvocationContext;
 import org.infinispan.context.InvocationContextContainer;
 import org.infinispan.context.impl.LocalTxInvocationContext;
+import org.infinispan.context.impl.RemoteTxInvocationContext;
 import org.infinispan.context.impl.TxInvocationContext;
 import org.infinispan.factories.annotations.Inject;
 import org.infinispan.interceptors.base.CommandInterceptor;
@@ -46,6 +47,8 @@ import javax.transaction.TransactionManager;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 import java.util.concurrent.atomic.AtomicLong;
+
+
 
 /**
  * Interceptor in charge with handling transaction related operations, e.g enlisting cache as an transaction
@@ -88,6 +91,8 @@ public class TxInterceptor extends CommandInterceptor {
    @Override
    public Object visitPrepareCommand(TxInvocationContext ctx, PrepareCommand command) throws Throwable {
       if (!ctx.isOriginLocal()) {
+          //SEB
+          ((RemoteTxInvocationContext)ctx).setReplicasPolicyMode(Configuration.ReplicasPolicyMode.PC);
          // replay modifications
          for (VisitableCommand modification : command.getModifications()) {
             VisitableCommand toReplay = getCommandToReplay(modification);
@@ -111,6 +116,8 @@ public class TxInterceptor extends CommandInterceptor {
    @Override
    public Object visitPassiveReplicationCommand(TxInvocationContext ctx, PassiveReplicationCommand command) throws Throwable {
       if (!ctx.isOriginLocal()) {
+         //SEB
+          ((RemoteTxInvocationContext)ctx).setReplicasPolicyMode(Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION);
          // replay modifications
          for (VisitableCommand modification : command.getModifications()) {
             VisitableCommand toReplay = getCommandToReplay(modification);

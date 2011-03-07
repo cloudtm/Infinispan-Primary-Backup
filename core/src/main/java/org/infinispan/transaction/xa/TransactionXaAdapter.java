@@ -67,6 +67,7 @@ public class TransactionXaAdapter implements XAResource {
          if (trace) log.trace("Received prepare for tx: %s. Skipping call as 1PC will be used.", xid);
          return XA_OK;
       }
+      //SEBDIE
       PrepareCommand prepareCommand=null;
       if(configuration.isPassiveReplication()){//Primary backup replication context
             prepareCommand = commandsFactory.buildPassiveReplicationCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications());
