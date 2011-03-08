@@ -441,6 +441,10 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
    public boolean isSwitchEnabled(){
        return this.clustering.isSwitchEnabled();
    }
+   //SEB
+   public void setSwitch(boolean enable){
+       this.clustering.setDynamicSwitch(enable);
+   }
 
    /**
     * Eviction thread wake up interval, in milliseconds.
@@ -1402,7 +1406,6 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
       }
       //SEBDIE
       public void setReplicasPolicy(ReplicasPolicyMode policy){
-         testImmutability("replicasPolicy");
          this.replicasPolicy.setMode(policy);
 
       }
@@ -1413,6 +1416,10 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
       //SEB
       public boolean isSwitchEnabled(){
           return (this.replicasPolicy.dynamicSwitch == true);
+      }
+      //SEB
+      public void setDynamicSwitch(boolean enable){
+          this.replicasPolicy.setDynamicSwitch(enable);
       }
 
       public boolean isSynchronous() {
@@ -1427,6 +1434,8 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
          dolly.l1 = (L1Type) l1.clone();
          dolly.async = (AsyncType) async.clone();
          dolly.hash = (HashType) hash.clone();
+         //SEB
+         dolly.replicasPolicy = (ReplicasPolicyType) replicasPolicy.clone();
          return dolly;
       }
 
@@ -1436,6 +1445,7 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
          l1.accept(v);
          stateRetrieval.accept(v);
          sync.accept(v);
+         replicasPolicy.accept(v);
          v.visitClusteringType(this);
       }
 
@@ -1453,6 +1463,8 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
          if (stateRetrieval != null ? !stateRetrieval.equals(that.stateRetrieval) : that.stateRetrieval != null)
             return false;
          if (sync != null ? !sync.equals(that.sync) : that.sync != null) return false;
+         //SEB
+         if (replicasPolicy != null ? replicasPolicy.equals(that.replicasPolicy) : that.replicasPolicy !=null) return false;
 
          return true;
       }
@@ -1466,6 +1478,8 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
          result = 31 * result + (l1 != null ? l1.hashCode() : 0);
          result = 31 * result + (async != null ? async.hashCode() : 0);
          result = 31 * result + (hash != null ? hash.hashCode() : 0);
+         //SEB
+         result = 31 * result + (replicasPolicy != null ? replicasPolicy.hashCode() : 0);
          return result;
       }
 
@@ -2591,10 +2605,9 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
    @XmlAccessorType(XmlAccessType.PROPERTY)
    public static class ReplicasPolicyType extends AbstractNamedCacheConfigurationBean{
 
-      @Dynamic
+      //@Dynamic is Dynamic only if dynamicSwitch is true
       protected ReplicasPolicyMode mode;
       //SEB
-      @Dynamic
       protected Boolean dynamicSwitch;
       //SEB
       public ReplicasPolicyType(){
@@ -2604,7 +2617,8 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
 
       @XmlAttribute
       public void setMode(ReplicasPolicyMode value){
-          testImmutability("mode");
+          if(!dynamicSwitch)
+             testImmutability("mode");
           this.mode=value;
       }
       //SEB
@@ -2617,6 +2631,12 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
       public static ReplicasPolicyMode valueOf(String value){
           return ReplicasPolicyMode.valueOf(value);
       }
+
+      //SEB
+      public void accept(ConfigurationBeanVisitor v) {
+         v.visitReplicasPolicyType(this);
+      }
+
       //SEB
       @Override
       public boolean equals(Object o) {

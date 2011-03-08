@@ -191,8 +191,14 @@ public abstract class AbstractConfigurationBeanVisitor implements ConfigurationB
    public void visitExternalizersType(GlobalConfiguration.ExternalizersType bean) {
       defaultVisit(bean);
    }
+   //SEB
+   public void visitReplicasPolicyType(Configuration.ReplicasPolicyType bean){
+      defaultVisit(bean);
+   }
 
    public void defaultVisit(AbstractConfigurationBean c) {
    }
+
+
 
 }

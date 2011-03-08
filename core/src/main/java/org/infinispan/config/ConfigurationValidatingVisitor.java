@@ -56,6 +56,9 @@ public class ConfigurationValidatingVisitor extends AbstractConfigurationBeanVis
 
       if (clusteringType.mode.isSynchronous() && clusteringType.async.useReplQueue)
          throw new ConfigurationException("Use of the replication queue is only allowed with an ASYNCHRONOUS cluster mode.");
+      //SEB
+      if ((clusteringType.isPassiveReplication() || clusteringType.isSwitchEnabled() ) && (!clusteringType.mode.isReplicated() || !clusteringType.mode.isSynchronous()))
+         throw new ConfigurationException("Use of the passive replication scheme or the dynamic switch is only allowed with a SYNCHRONOUS REPLICATED cluster mode.");
    }
    
    public void visitEvictionType(EvictionType et) {

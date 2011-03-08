@@ -122,5 +122,7 @@ public interface ConfigurationBeanVisitor {
    void visitExternalizersType(ExternalizersType bean);
    
    void visitExternalizerConfig(ExternalizerConfig config);
+   //SEB
+   void visitReplicasPolicyType(Configuration.ReplicasPolicyType bean);
 
 }
