@@ -21,7 +21,7 @@ public class RemoteTxInvocationContext extends AbstractTxInvocationContext {
 
 
    private RemoteTransaction remoteTransaction;
-
+   //SEB
    private Configuration.ReplicasPolicyMode replicationMode;
 
    public RemoteTxInvocationContext() {

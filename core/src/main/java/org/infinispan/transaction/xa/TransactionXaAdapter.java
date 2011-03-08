@@ -8,6 +8,7 @@ import org.infinispan.config.Configuration;
 import org.infinispan.context.InvocationContextContainer;
 import org.infinispan.context.impl.LocalTxInvocationContext;
 import org.infinispan.interceptors.InterceptorChain;
+import org.infinispan.remoting.transport.Transport;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 
@@ -69,11 +70,14 @@ public class TransactionXaAdapter implements XAResource {
       }
       //SEBDIE
       PrepareCommand prepareCommand=null;
-      if(configuration.isPassiveReplication()){//Primary backup replication context
-            prepareCommand = commandsFactory.buildPassiveReplicationCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications());
+      //SEB
+      if(configuration.isPassiveReplication() && (isCoordinator() || localTransaction.getModifications() == null || localTransaction.getModifications().isEmpty())){//Primary backup replication context
+         localTransaction.setForcedReplicatedCommit(Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION);
+         prepareCommand = commandsFactory.buildPassiveReplicationCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications());
       }
       else{
-          prepareCommand = commandsFactory.buildPrepareCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications(), configuration.isOnePhaseCommit());
+         localTransaction.setForcedReplicatedCommit(Configuration.ReplicasPolicyMode.PC);
+         prepareCommand = commandsFactory.buildPrepareCommand(localTransaction.getGlobalTransaction(), localTransaction.getModifications(), configuration.isOnePhaseCommit());
       }
       if (trace) log.trace("Sending prepare command through the chain: " + prepareCommand);
 
@@ -104,7 +108,7 @@ public class TransactionXaAdapter implements XAResource {
       if (trace) log.trace("committing transaction %s" + localTransaction.getGlobalTransaction());
       try {
           //SEBDIE
-         if(configuration.isPassiveReplication()){//In Passive Replication the commit is performed in the prepare phase.
+         if(localTransaction.getForcedReplicatedCommit() == Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION){//In Passive Replication the commit is performed in the prepare phase.
              return;
          }
 
@@ -242,5 +246,10 @@ public class TransactionXaAdapter implements XAResource {
    private static void cleanupImpl(LocalTransaction localTransaction, TransactionTable txTable, InvocationContextContainer icc) {
       txTable.removeLocalTransaction(localTransaction);
       icc.suspend();
-   }   
+   }
+   //SEB
+   private boolean isCoordinator(){
+      Transport t = txTable.getTransport();
+      return t != null ? t.isCoordinator() : false;
+   }
 }

@@ -17,6 +17,7 @@ import org.infinispan.notifications.cachemanagerlistener.event.ViewChangedEvent;
 import org.infinispan.remoting.MembershipArithmetic;
 import org.infinispan.remoting.rpc.RpcManager;
 import org.infinispan.remoting.transport.Address;
+import org.infinispan.remoting.transport.Transport;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 
@@ -254,5 +255,10 @@ public class TransactionTable {
 
    public boolean containRemoteTx(GlobalTransaction globalTransaction) {
       return remoteTransactions.containsKey(globalTransaction);
+   }
+   //SEB
+   public Transport getTransport(){
+
+       return rpcManager != null ? rpcManager.getTransport() : null;
    }
 }

@@ -56,6 +56,7 @@ import org.infinispan.container.entries.InternalCacheEntry;
 import org.infinispan.context.Flag;
 import org.infinispan.context.InvocationContext;
 import org.infinispan.context.InvocationContextContainer;
+import org.infinispan.context.impl.TxInvocationContext;
 import org.infinispan.distribution.DistributionManager;
 import org.infinispan.eviction.EvictionManager;
 import org.infinispan.factories.ComponentRegistry;
@@ -650,8 +651,11 @@ public class CacheDelegate<K, V> extends CacheSupport<K,V> implements AdvancedCa
    }
    //SEBDIE
    private static boolean operationPermitted(Configuration conf, EmbeddedCacheManager cacheManager, InvocationContext ctx){
-
-       if(ctx.isInTxScope() && conf.isPassiveReplication())
+       //SEB
+       //If we are in Passive Replication mode and in transaction scope we have to permit the write operation if there were other writes performed in the past
+       //This is the case of a switch from 2PC to PR during the execution of a transaction that has already performed a write operation on a backup node
+       //(respect to the passive replication scheme) during the 2PC phase
+       if(ctx.isInTxScope() && conf.isPassiveReplication() && !(((TxInvocationContext)(ctx)).hasModifications()))
            return cacheManager.isCoordinator();
 
        return true;

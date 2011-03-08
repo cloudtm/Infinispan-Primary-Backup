@@ -1,6 +1,7 @@
 package org.infinispan.transaction.xa;
 
 import org.infinispan.commands.write.WriteCommand;
+import org.infinispan.config.Configuration;
 import org.infinispan.container.entries.CacheEntry;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.util.BidirectionalLinkedHashMap;
@@ -35,6 +36,9 @@ public class LocalTransaction extends AbstractCacheTransaction {
 
    private final Transaction transaction;
    private Xid xid;
+
+   //SEB
+   private Configuration.ReplicasPolicyMode forcedReplicatedCommit;
 
    public LocalTransaction(Transaction transaction, GlobalTransaction tx) {
       super.tx = tx;
@@ -107,4 +111,14 @@ public class LocalTransaction extends AbstractCacheTransaction {
    public boolean isEnlisted() {
       return xid != null;
    }
+
+   //SEB
+   public void setForcedReplicatedCommit(Configuration.ReplicasPolicyMode forcedReplicatedCommit) {
+      this.forcedReplicatedCommit = forcedReplicatedCommit;
+   }
+   //SEB
+   public Configuration.ReplicasPolicyMode getForcedReplicatedCommit() {
+      return forcedReplicatedCommit;
+   }
+
 }

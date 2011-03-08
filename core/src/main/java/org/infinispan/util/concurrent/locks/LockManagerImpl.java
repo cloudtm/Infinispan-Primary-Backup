@@ -71,7 +71,7 @@ public class LockManagerImpl implements LockManager {
 
    @Start
    public void startLockManager() {
-      lockContainer = configuration.isUseLockStriping() ?
+      lockContainer = configuration.isUseLockStriping() ?                                                                                                                                                                                                 //SEB
       transactionManager == null ? new ReentrantStripedLockContainer(configuration.getConcurrencyLevel()) : configuration.isSwitchEnabled() ? new OwnableReentrantStubbornStripedLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer) : new OwnableReentrantStripedLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer) :
       transactionManager == null ? new ReentrantPerEntryLockContainer(configuration.getConcurrencyLevel()) : configuration.isSwitchEnabled() ? new OwnableReentrantStubbornPerEntryLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer) : new OwnableReentrantPerEntryLockContainer(configuration.getConcurrencyLevel(), invocationContextContainer);
    }
