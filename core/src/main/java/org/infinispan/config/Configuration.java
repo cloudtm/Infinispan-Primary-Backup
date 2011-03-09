@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.infinispan.config.Configuration.CacheMode.*;
@@ -1411,7 +1412,7 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
       }
       //SEBDIE
       public boolean isPassiveReplication(){
-          return (this.replicasPolicy.mode==ReplicasPolicyMode.PASSIVE_REPLICATION);
+          return (this.replicasPolicy.mode.get()==ReplicasPolicyMode.PASSIVE_REPLICATION.ordinal());
       }
       //SEB
       public boolean isSwitchEnabled(){
@@ -2606,12 +2607,13 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
    public static class ReplicasPolicyType extends AbstractNamedCacheConfigurationBean{
 
       //@Dynamic is Dynamic only if dynamicSwitch is true
-      protected ReplicasPolicyMode mode;
+      //protected ReplicasPolicyMode mode;
+       protected AtomicInteger mode;
       //SEB
       protected Boolean dynamicSwitch;
       //SEB
       public ReplicasPolicyType(){
-          this.mode=ReplicasPolicyMode.PC;
+          this.mode=new AtomicInteger(ReplicasPolicyMode.PC.ordinal());
           this.dynamicSwitch=false;
       }
 
@@ -2619,7 +2621,7 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
       public void setMode(ReplicasPolicyMode value){
           if(!dynamicSwitch)
              testImmutability("mode");
-          this.mode=value;
+          this.mode.set(value.ordinal());
       }
       //SEB
       @XmlAttribute
@@ -2645,7 +2647,7 @@ public class Configuration extends AbstractNamedCacheConfigurationBean {
 
          ReplicasPolicyType that = (ReplicasPolicyType) o;
 
-         return (this.mode==that.mode) && (this.dynamicSwitch == that.dynamicSwitch);
+         return (this.mode.get()==that.mode.get()) && (this.dynamicSwitch == that.dynamicSwitch);
       }
       //SEB
       @Override

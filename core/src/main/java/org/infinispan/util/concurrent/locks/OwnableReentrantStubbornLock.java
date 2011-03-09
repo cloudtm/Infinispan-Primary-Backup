@@ -29,9 +29,7 @@ public class OwnableReentrantStubbornLock extends OwnableReentrantLock{
       }
       else{
          stubbornOwner=currentRequestor();   //Current thread makes a reservation for the lock and...
-         System.out.println("Stubborn owner: "+stubbornOwner.getClass().getName());
          acquire(1);                       //... it blocks until the lock is free
-         System.out.println("Lock acquired by stubborn owner");
          return true;
       }
 
