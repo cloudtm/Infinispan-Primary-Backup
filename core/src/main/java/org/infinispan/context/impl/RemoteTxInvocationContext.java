@@ -23,6 +23,8 @@ public class RemoteTxInvocationContext extends AbstractTxInvocationContext {
    private RemoteTransaction remoteTransaction;
    //SEB
    private Configuration.ReplicasPolicyMode replicationMode;
+   //SEBDIE
+   private long replayTime;
 
    public RemoteTxInvocationContext() {
    }
@@ -90,6 +92,15 @@ public class RemoteTxInvocationContext extends AbstractTxInvocationContext {
    //SEB
    public Configuration.ReplicasPolicyMode getReplicasPolicyMode(){
       return replicationMode;
+   }
+
+   //SEBDIE
+   public void setReplayTime(long time){
+       this.replayTime=time;
+   }
+
+   public long getReplayTime(){
+       return this.replayTime;
    }
 
    @Override

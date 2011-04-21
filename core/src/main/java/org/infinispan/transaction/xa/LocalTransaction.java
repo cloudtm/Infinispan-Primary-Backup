@@ -29,6 +29,14 @@ public class LocalTransaction extends AbstractCacheTransaction {
    private static Log log = LogFactory.getLog(LocalTransaction.class);
    private static final boolean trace = log.isTraceEnabled();
 
+
+   /**
+   * //DIE: I don't put this variable also in the parent class, because it is needed only in local txs
+   */
+   private long waited_time_on_locks=0;
+   private long lifeTime=0;
+   private boolean alreadyWritten=false;
+
    private Set<Address> remoteLockedNodes;
 
    /** mark as volatile as this might be set from the tx thread code on view change*/
@@ -120,5 +128,28 @@ public class LocalTransaction extends AbstractCacheTransaction {
    public Configuration.ReplicasPolicyMode getForcedReplicatedCommit() {
       return forcedReplicatedCommit;
    }
+   //DIE
+   public void addWaitedTimeOnLocks(long delta){
+      this.waited_time_on_locks+=delta;
+   }
+   //DIE
+   public long getWaitedTimeOnLocks(){
+      return this.waited_time_on_locks;
+   }
 
+    public void startTimer(){
+        this.lifeTime = System.nanoTime();
+    }
+
+    public long getLifeTime(){
+       return this.lifeTime=System.nanoTime()-lifeTime;
+    }
+
+    public boolean hasAlreadyWritten(){
+       return this.alreadyWritten;
+    }
+
+    public void setAlreadyWritten(){
+        this.alreadyWritten=true;
+    }
 }

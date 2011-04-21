@@ -29,7 +29,7 @@ public class OwnableReentrantStubbornLock extends OwnableReentrantLock{
       }
       else{
          stubbornOwner=currentRequestor();   //Current thread makes a reservation for the lock and...
-         acquire(1);                       //... it blocks until the lock is free
+         acquire(1);                         //... it blocks until the lock is free
          return true;
       }
 

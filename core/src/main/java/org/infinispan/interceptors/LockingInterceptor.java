@@ -52,6 +52,7 @@ import org.infinispan.util.ReversibleOrderedSet;
 import org.infinispan.util.concurrent.IsolationLevel;
 import org.infinispan.util.concurrent.TimeoutException;
 import org.infinispan.util.concurrent.locks.LockManager;
+import org.infinispan.util.concurrent.locks.LockManagerImpl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -303,7 +304,7 @@ public class LockingInterceptor extends CommandInterceptor {
    @Override
    public Object visitPutKeyValueCommand(InvocationContext ctx, PutKeyValueCommand command) throws Throwable {
       try {
-         entryFactory.wrapEntryForWriting(ctx, command.getKey(), true, false, false, false, !command.isPutIfAbsent());
+         entryFactory.EntryForWriting(ctx, command.getKey(), true, false, false, false, !command.isPutIfAbsent());
          return invokeNextInterceptor(ctx, command);
       } catch (Throwable te) {
          return cleanLocksAndRethrow(ctx, te);
@@ -413,6 +414,23 @@ public class LockingInterceptor extends CommandInterceptor {
                lockManager.unlock(key);
             }
          }
+
+
+
+
+          /**
+         * //DIE: I am committing a transaction, so if this transaction is local I want to collect
+         * the statistic about its total waiting time
+         * I use a simple cast in order to avoid adding the called method updateWaited... on the
+         * LockManager interface
+         */
+         if(ctx.isInTxScope() && ctx.isOriginLocal() && ((LocalTxInvocationContext)ctx).hasModifications()){
+            LocalTxInvocationContext lctx=(LocalTxInvocationContext) ctx;
+            LockManagerImpl actualLockManager=(LockManagerImpl)this.lockManager;
+            actualLockManager.updateWaitedTimeOnLockStats(lctx.getWaitedTimeOnLocks());
+
+         }
+
       } else {
          lockManager.releaseLocks(ctx);
       }

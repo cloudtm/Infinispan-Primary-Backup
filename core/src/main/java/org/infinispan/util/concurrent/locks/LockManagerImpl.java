@@ -26,24 +26,31 @@ import org.infinispan.container.entries.CacheEntry;
 import org.infinispan.context.Flag;
 import org.infinispan.context.InvocationContext;
 import org.infinispan.context.InvocationContextContainer;
+import org.infinispan.context.impl.LocalTxInvocationContext;
 import org.infinispan.context.impl.RemoteTxInvocationContext;
 import org.infinispan.context.impl.TxInvocationContext;
 import org.infinispan.factories.annotations.Inject;
 import org.infinispan.factories.annotations.Start;
 import org.infinispan.jmx.annotations.MBean;
 import org.infinispan.jmx.annotations.ManagedAttribute;
+import org.infinispan.jmx.annotations.ManagedOperation;
+import org.infinispan.transaction.xa.GlobalTransaction;
 import org.infinispan.util.ReversibleOrderedSet;
 import org.infinispan.util.concurrent.locks.containers.*;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 import org.rhq.helpers.pluginAnnotations.agent.DataType;
 import org.rhq.helpers.pluginAnnotations.agent.Metric;
+import org.rhq.helpers.pluginAnnotations.agent.Operation;
 
 import javax.transaction.Transaction;
 import javax.transaction.TransactionManager;
 import java.util.Iterator;
 import java.util.Map;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -62,6 +69,22 @@ public class LockManagerImpl implements LockManager {
    protected static final boolean trace = log.isTraceEnabled();
    private static final String ANOTHER_THREAD = "(another thread)";
 
+   /**
+    * //DIE
+    * These atomic counters give the information about the lock contention occurrence and nature
+    */
+
+    private AtomicLong localLocalContentions=new AtomicLong(0);
+    private AtomicLong localRemoteContentions=new AtomicLong(0);
+    private AtomicLong remoteLocalContentions=new AtomicLong(0);
+    private AtomicLong remoteRemoteContentions=new AtomicLong(0);
+    private AtomicLong committedTimeWaitedOnLocks=new AtomicLong(0);
+    private AtomicLong localLocalDeadlock=new AtomicLong(0);
+    private AtomicLong localRemoteDeadlock=new AtomicLong(0);
+    private AtomicLong remoteLocalDeadlock=new AtomicLong(0);
+    private AtomicLong remoteRemoteDeadlock=new AtomicLong(0);
+    private AtomicLong commitedLocalTx=new AtomicLong(0);
+
    @Inject
    public void injectDependencies(Configuration configuration, TransactionManager transactionManager, InvocationContextContainer invocationContextContainer) {
       this.configuration = configuration;
@@ -77,11 +100,34 @@ public class LockManagerImpl implements LockManager {
    }
 
    public boolean lockAndRecord(Object key, InvocationContext ctx) throws InterruptedException {
+      //DIE
+      long start_lock_timer=0;
+      long time_to_acquire_lock=0;
+      if(ctx.isInTxScope()){
+         this.updateContentionStats(key,ctx);
+      }
+
+
       //SEB
       long lockTimeout = ((ctx instanceof RemoteTxInvocationContext) && configuration.isSwitchEnabled() && ((RemoteTxInvocationContext) ctx).getReplicasPolicyMode() == Configuration.ReplicasPolicyMode.PASSIVE_REPLICATION)? -1 : getLockAcquisitionTimeout(ctx);
       if (trace) log.trace("Attempting to lock %s with acquisition timeout of %s millis", key, lockTimeout);
+
+      start_lock_timer=System.nanoTime();  //DIE
+
       if (lockContainer.acquireLock(key, lockTimeout, MILLISECONDS) != null) {
-         // successfully locked!
+
+
+          // successfully locked!
+
+          //DIE
+         if(ctx.isInTxScope() && ctx.isOriginLocal()){
+            time_to_acquire_lock=System.nanoTime()-start_lock_timer;
+             LocalTxInvocationContext lctx=(LocalTxInvocationContext)ctx;
+             lctx.addWaitedTimeOnLocks(time_to_acquire_lock);
+         }
+
+
+
          if (ctx instanceof TxInvocationContext) {
             TxInvocationContext tctx = (TxInvocationContext) ctx;
             if (!tctx.isRunningTransactionValid()) {
@@ -199,5 +245,116 @@ public class LockManagerImpl implements LockManager {
    @Metric(displayName = "Number of locks available")
    public int getNumberOfLocksAvailable() {
       return lockContainer.size() - lockContainer.getNumLocksHeld();
+   }
+
+   //DIE
+   public void updateWaitedTimeOnLockStats(long waitedTime){
+        this.committedTimeWaitedOnLocks.addAndGet(waitedTime);
+        this.commitedLocalTx.incrementAndGet();
+   }
+
+   //DIE
+   private void updateContentionStats(Object key, InvocationContext ctx){
+      GlobalTransaction holder=(GlobalTransaction)this.getOwner(key);
+      if(holder!=null){
+         GlobalTransaction me=(GlobalTransaction) ctx.getLockOwner();
+         if(holder!=me){
+            boolean amILocal=!(me.isRemote());
+            boolean isItLocal=!(holder.isRemote());
+            if(amILocal && isItLocal )
+               this.localLocalContentions.incrementAndGet();
+            else if(amILocal && !isItLocal)
+               this.localRemoteContentions.incrementAndGet();
+            else if(!amILocal && isItLocal)
+               this.remoteLocalContentions.incrementAndGet();
+            else
+               this.remoteRemoteContentions.incrementAndGet();
+         }
+      }
+
+   }
+
+
+    public void updateDeadlockStats(boolean amILocal, boolean isItLocal){
+
+            if(amILocal && isItLocal )
+               this.localLocalDeadlock.incrementAndGet();
+            else if(amILocal && !isItLocal)
+               this.localRemoteDeadlock.incrementAndGet();
+            else if(!amILocal && isItLocal)
+               this.remoteLocalDeadlock.incrementAndGet();
+            else
+               this.remoteRemoteDeadlock.incrementAndGet();
+
+
+     }
+
+
+   //DIE
+   @ManagedAttribute(description = "The number of contentions among local transactions")
+   @Metric(displayName = "LocalLocalContentions")
+    public long getLocalLocalContentions(){
+       return this.localLocalContentions.get();
+    }
+    //DIE
+    @ManagedAttribute(description = "The number of contentions among local transactions with remote ones")
+    @Metric(displayName = "LocalRemoteContentions")
+    public long getLocalRemoteContentions(){
+        return this.localRemoteContentions.get();
+    }
+    //DIE
+    @ManagedAttribute(description = "The number of contentions among remote transactions and local ones")
+    @Metric(displayName = "RemoteLocalContentions")
+    public long getRemoteLocalContentions(){
+         return this.remoteLocalContentions.get();
+    }
+    //DIE
+    @ManagedAttribute(description = "The number of contentions among remote transactions")
+    @Metric(displayName = "RemoteRemoteContentions")
+    public long getRemoteRemoteContentions(){
+       return this.remoteRemoteContentions.get();
+    }
+
+
+      //DIE
+   @ManagedAttribute(description = "The number of contentions among local transactions")
+   @Metric(displayName = "LocalLocalDeadlock")
+    public long getLocalLocalDeadlock(){
+       return this.localLocalDeadlock.get();
+    }
+    //DIE
+    @ManagedAttribute(description = "The number of Deadlock among local transactions with remote ones")
+    @Metric(displayName = "LocalRemoteDeadlock")
+    public long getLocalRemoteDeadlock(){
+        return this.localRemoteDeadlock.get();
+    }
+    //DIE
+    @ManagedAttribute(description = "The number of Deadlock among remote transactions and local ones")
+    @Metric(displayName = "RemoteLocalDeadlock")
+    public long getRemoteLocalDeadlock(){
+         return this.remoteLocalDeadlock.get();
+    }
+    //DIE
+    @ManagedAttribute(description = "The number of Deadlock among remote transactions")
+    @Metric(displayName = "RemoteRemoteDeadlock")
+    public long getRemoteRemoteDeadlock(){
+       return this.remoteRemoteDeadlock.get();
+    }
+
+    //DIE
+    @ManagedAttribute(description = "Average time spent waiting for locks during the execution of a transaction (committed txs only)")
+    @Metric(displayName = "AvgCommittedTimeWaitedOnLocks")
+    public long getAvgCommittedTimeWaitedOnLocks(){
+        if(this.commitedLocalTx.get()==0 || this.committedTimeWaitedOnLocks.get()==0)
+            return 0;
+        return this.committedTimeWaitedOnLocks.get()/this.commitedLocalTx.get();
+    }
+
+   @ManagedOperation(description = "Resets statistics relevant to contentions")
+   @Operation(displayName = "Reset Local Transactions' contentions")
+   public void resetLocalTxContentions(){
+       this.localLocalContentions.set(0);
+       this.localRemoteContentions.set(0);	
+
    }
 }

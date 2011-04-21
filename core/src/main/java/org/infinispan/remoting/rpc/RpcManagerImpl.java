@@ -4,6 +4,9 @@ import org.infinispan.CacheException;
 import org.infinispan.commands.CommandsFactory;
 import org.infinispan.commands.ReplicableCommand;
 import org.infinispan.commands.remote.CacheRpcCommand;
+import org.infinispan.commands.tx.CommitCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
+import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.config.Configuration;
 import org.infinispan.factories.KnownComponentNames;
 import org.infinispan.factories.annotations.ComponentName;
@@ -57,6 +60,12 @@ public class RpcManagerImpl implements RpcManager {
    private final AtomicLong replicationCount = new AtomicLong(0);
    private final AtomicLong replicationFailures = new AtomicLong(0);
    private final AtomicLong totalReplicationTime = new AtomicLong(0);
+   //SEBDIE
+   private final AtomicLong committedReplicationCount = new AtomicLong(0);
+   private final AtomicLong txReplicationTime = new AtomicLong(0);
+   private final AtomicLong txSuccessfulReplicationTime=new AtomicLong(0);
+
+
 
    @ManagedAttribute(description = "Enables or disables the gathering of statistics by this component", writable = true)
    boolean statisticsEnabled = false; // by default, don't gather statistics.
@@ -90,18 +99,27 @@ public class RpcManagerImpl implements RpcManager {
 
    public final List<Response> invokeRemotely(Collection<Address> recipients, ReplicableCommand rpcCommand, ResponseMode mode, long timeout, boolean usePriorityQueue, ResponseFilter responseFilter) {
       List<Address> members = t.getMembers();
+      byte rpcId=rpcCommand.getCommandId();
+      boolean exception_thrown=false;
       if (members.size() < 2) {
          if (log.isDebugEnabled())
             log.debug("We're the only member in the cluster; Don't invoke remotely.");
          return Collections.emptyList();
       } else {
          long startTime = 0;
-         if (statisticsEnabled) startTime = System.currentTimeMillis();
+         if (statisticsEnabled) startTime = System.nanoTime();
          try {
             List<Response> result = t.invokeRemotely(recipients, rpcCommand, mode, timeout, usePriorityQueue, responseFilter, stateTransferEnabled);
-            if (isStatisticsEnabled()) replicationCount.incrementAndGet();
+            if (isStatisticsEnabled()){
+                replicationCount.incrementAndGet();
+                //SEBDIE  (Changed also millisTOnano)
+                if (rpcId==(CommitCommand.COMMAND_ID) || rpcId==(PassiveReplicationCommand.COMMAND_ID)){
+                   committedReplicationCount.incrementAndGet();
+                }
+            }
             return result;
          } catch (CacheException e) {
+            exception_thrown=true;
             if (log.isTraceEnabled()) {
                log.trace("replication exception: ", e);
             }
@@ -109,16 +127,30 @@ public class RpcManagerImpl implements RpcManager {
             if (isStatisticsEnabled()) replicationFailures.incrementAndGet();
             throw e;
          } catch (Throwable th) {
+            exception_thrown=true;
             log.error("unexpected error while replicating", th);
             if (isStatisticsEnabled()) replicationFailures.incrementAndGet();
             throw new CacheException(th);
          } finally {
             if (statisticsEnabled) {
-               long timeTaken = System.currentTimeMillis() - startTime;
+               long timeTaken = System.nanoTime() - startTime;
                totalReplicationTime.getAndAdd(timeTaken);
+               /*SEBDIE
+                The CommitCommand is not considered since by default ISPN has the async commit phase
+                (i.e. it sends the commit command to the cohorts and does not wait for acks)
+                We don't put an explicit condition to consider the non-default case since the model
+                is designed to work with the async commit
+                */
+               if((rpcId==CommitCommand.COMMAND_ID || rpcId==PassiveReplicationCommand.COMMAND_ID) && !exception_thrown){
+                   txSuccessfulReplicationTime.getAndAdd(timeTaken);
+               }
+               if(rpcId==(PrepareCommand.COMMAND_ID) || rpcId==(PassiveReplicationCommand.COMMAND_ID)){
+                 txReplicationTime.getAndAdd(timeTaken);
+
             }
          }
       }
+   }
    }
 
    public final List<Response> invokeRemotely(Collection<Address> recipients, ReplicableCommand rpcCommand, ResponseMode mode, long timeout, boolean usePriorityQueue) {
@@ -292,7 +324,55 @@ public class RpcManagerImpl implements RpcManager {
       replicationCount.set(0);
       replicationFailures.set(0);
       totalReplicationTime.set(0);
+      //SEBDIE
+      txReplicationTime.set(0);
+      committedReplicationCount.set(0);
    }
+
+   @ManagedAttribute(description = "Number of successfully replicated transactions")
+   @Metric(displayName = "Number of successfully replicated transactions")
+   public long getCommittedReplicationCount(){
+      if (!isStatisticsEnabled()) {
+         return -1;
+      }
+      return committedReplicationCount.get();
+   }
+
+   @ManagedAttribute(description = "Time spent in the Transport layer to replicate transactions (including remotely failed ones) ")
+   @Metric(displayName = "Time spent in the Transport layer to replicate transactions (including remotely failed ones)")
+   public long getTxReplicationTime(){
+      if (!isStatisticsEnabled()) {
+         return -1;
+      }
+      return txReplicationTime.get();
+
+   }
+
+   @ManagedAttribute(description = "Average time spent in the transport layer to replicate a transaction (aborted or completed)" )
+   @Metric(displayName = "Avg commit time")
+   public long getAvgCommitTime(){
+      if (!isStatisticsEnabled()){
+         return -1;
+      }
+      if (committedReplicationCount.get()==0){
+          return txReplicationTime.get();
+      }
+      return txReplicationTime.get()/committedReplicationCount.get();
+
+   }
+   
+   @ManagedAttribute(description = "Average time spent in the transport layer to replicate successfully a transaction " )
+   @Metric(displayName = "Avg successful commit time")
+   public long getAvgSuccessfulCommitTime(){
+      if (committedReplicationCount.get()==0){
+          return -1;
+      }
+      return txSuccessfulReplicationTime.get()/committedReplicationCount.get();
+
+   }
+
+
+
 
    @ManagedAttribute(description = "Number of successful replications")
    @Metric(displayName = "Number of successful replications", measurementType = MeasurementType.TRENDSUP, displayType = DisplayType.SUMMARY)
@@ -349,7 +429,14 @@ public class RpcManagerImpl implements RpcManager {
       if (replicationCount.get() == 0) {
          return 0;
       }
-      return totalReplicationTime.get() / replicationCount.get();
+      return (totalReplicationTime.get()/1000000) / replicationCount.get();
+   }
+
+   @ManagedOperation(description = "Reset Statitics relevant to commit duration")
+   @Operation(displayName = "Reset commit statistics")
+   public void resetCommitStats(){
+      this.committedReplicationCount.set(0);
+      this.txReplicationTime.set(0);
    }
 
    // mainly for unit testing

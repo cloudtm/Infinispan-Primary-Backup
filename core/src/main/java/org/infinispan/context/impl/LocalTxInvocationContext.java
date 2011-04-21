@@ -99,4 +99,27 @@ public class LocalTxInvocationContext extends AbstractTxInvocationContext {
    public Collection<Address> getRemoteLocksAcquired() {
       return localTransaction.getRemoteLocksAcquired();
    }
+
+   /**
+   * //DIE: I treat the information about the waiting time on locks just like the Modifications, for instance
+   */
+   public long getWaitedTimeOnLocks(){
+      return this.localTransaction.getWaitedTimeOnLocks();
+   }
+
+   public void addWaitedTimeOnLocks(long delta){
+      this.localTransaction.addWaitedTimeOnLocks(delta);
+   }
+
+   public long getLocalLifeTime(){
+        return this.localTransaction.getLifeTime();
+    }
+
+   public void setAlreadyWritten(){
+       this.localTransaction.setAlreadyWritten();
+   }
+
+   public boolean hasAlreadyWritten(){
+      return this.localTransaction.hasAlreadyWritten();
+   }
 }

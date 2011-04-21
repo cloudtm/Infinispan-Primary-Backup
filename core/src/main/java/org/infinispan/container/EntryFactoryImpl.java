@@ -31,15 +31,18 @@ import org.infinispan.container.entries.ReadCommittedEntry;
 import org.infinispan.container.entries.RepeatableReadEntry;
 import org.infinispan.context.Flag;
 import org.infinispan.context.InvocationContext;
+import org.infinispan.context.impl.TxInvocationContext;
 import org.infinispan.factories.annotations.Inject;
 import org.infinispan.factories.annotations.Start;
 import org.infinispan.marshall.MarshalledValue;
 import org.infinispan.notifications.cachelistener.CacheNotifier;
+import org.infinispan.transaction.xa.GlobalTransaction;
 import org.infinispan.transaction.xa.InvalidTransactionException;
 import org.infinispan.util.Util;
 import org.infinispan.util.concurrent.IsolationLevel;
 import org.infinispan.util.concurrent.TimeoutException;
 import org.infinispan.util.concurrent.locks.LockManager;
+import org.infinispan.util.concurrent.locks.LockManagerImpl;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 
@@ -225,6 +228,14 @@ public class EntryFactoryImpl implements EntryFactory {
             if (key instanceof MarshalledValue) {
                key = ((MarshalledValue) key).get();
             }
+             //DIE
+             if(ctx.isInTxScope()){
+                LockManagerImpl actualLockManager = (LockManagerImpl)(this.lockManager);
+		if(owner!=null){
+                	actualLockManager.updateDeadlockStats(((TxInvocationContext)ctx).isOriginLocal(),!(((GlobalTransaction)(owner)).isRemote()));
+                }
+	     }
+
             throw new TimeoutException("Unable to acquire lock after [" + Util.prettyPrintTime(getLockAcquisitionTimeout(ctx)) + "] on key [" + key + "] for requestor [" +
                   ctx.getLockOwner() + "]! Lock held by [" + owner + "]");
          }
