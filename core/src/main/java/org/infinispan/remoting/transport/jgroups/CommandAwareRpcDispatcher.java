@@ -25,6 +25,8 @@ package org.infinispan.remoting.transport.jgroups;
 import org.infinispan.CacheException;
 import org.infinispan.commands.ReplicableCommand;
 import org.infinispan.commands.remote.CacheRpcCommand;
+import org.infinispan.commands.tx.PassiveReplicationCommand;
+import org.infinispan.commands.tx.PrepareCommand;
 import org.infinispan.remoting.InboundInvocationHandler;
 import org.infinispan.remoting.responses.ExceptionResponse;
 import org.infinispan.remoting.responses.ExtendedResponse;
@@ -147,10 +149,12 @@ public class CommandAwareRpcDispatcher extends RpcDispatcher {
       if (isValid(req)) {
          try {
             ReplicableCommand cmd = (ReplicableCommand) req_marshaller.objectFromByteBuffer(req.getBuffer(), req.getOffset(), req.getLength());
-            if (cmd instanceof CacheRpcCommand)
+            if (cmd instanceof CacheRpcCommand){
                return executeCommand((CacheRpcCommand) cmd, req);
-            else
+            }
+            else {
                return cmd.perform(null);
+            }
          } catch (Throwable x) {
             if (trace) log.trace("Problems invoking command.", x);
             return new ExceptionResponse(new CacheException("Problems invoking command.", x));
@@ -173,12 +177,34 @@ public class CommandAwareRpcDispatcher extends RpcDispatcher {
          // If this thread blocked during a NBST flush, then inform the sender
          // it needs to replay ignored messages
          boolean replayIgnored = sr == DistributedSync.SyncResponse.STATE_ACHIEVED;
-
+         /*
+          DIE
+          REPLICATION TIMER
+          */
+         long time_to_replay=0;
+         if(cmd instanceof PassiveReplicationCommand || cmd instanceof PrepareCommand){
+             time_to_replay=System.nanoTime();
+         }
          Response resp = inboundInvocationHandler.handle(cmd);
 
+         time_to_replay=System.nanoTime()-time_to_replay;
          // A null response is valid and OK ...
          if (resp == null || resp.isValid()) {
-            if (replayIgnored) resp = new ExtendedResponse(resp, true);
+
+
+            //if (replayIgnored) resp = new ExtendedResponse(resp, true);
+
+             resp=new ExtendedResponse(resp,replayIgnored);
+            /*
+             Even if the cohorts send us a null valid reply, we have to deliver to the upper layer a response
+             which contains the information about the replication time
+             */
+            if(cmd instanceof PassiveReplicationCommand || cmd instanceof PrepareCommand){
+               System.out.println("Sto scrivendo time to replay pari a "+time_to_replay);
+               ((ExtendedResponse)resp).setReplayTime(time_to_replay);
+            }
+
+
          } else {
             // invalid response
             newCacheStarting.set(true);

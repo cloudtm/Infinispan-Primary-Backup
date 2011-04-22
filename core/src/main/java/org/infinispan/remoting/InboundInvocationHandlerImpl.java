@@ -92,6 +92,10 @@ public class InboundInvocationHandlerImpl implements InboundInvocationHandler {
       try {
          log.trace("Calling perform() on %s", cmd);
          Object retval = cmd.perform(null);
+         if (retval==null)
+             System.out.println("Ho eseguito "+cmd.toString()+" e la risposta e' null");
+         else
+             System.out.println("Ho eseguito "+cmd.toString()+" e la risposta NON e' null");
          return cr.getComponent(ResponseGenerator.class).getResponse(cmd, retval);
       } catch (Exception e) {
          return new ExceptionResponse(e);

@@ -17,7 +17,9 @@ import org.infinispan.jmx.annotations.ManagedAttribute;
 import org.infinispan.jmx.annotations.ManagedOperation;
 import org.infinispan.remoting.ReplicationException;
 import org.infinispan.remoting.ReplicationQueue;
+import org.infinispan.remoting.responses.ExtendedResponse;
 import org.infinispan.remoting.responses.Response;
+import org.infinispan.remoting.responses.SuccessfulResponse;
 import org.infinispan.remoting.transport.Address;
 import org.infinispan.remoting.transport.Transport;
 import org.infinispan.statetransfer.StateTransferException;
@@ -35,6 +37,7 @@ import org.rhq.helpers.pluginAnnotations.agent.Units;
 import java.text.NumberFormat;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -64,6 +67,7 @@ public class RpcManagerImpl implements RpcManager {
    private final AtomicLong committedReplicationCount = new AtomicLong(0);
    private final AtomicLong txReplicationTime = new AtomicLong(0);
    private final AtomicLong txSuccessfulReplicationTime=new AtomicLong(0);
+   private final AtomicLong successfulRTT= new AtomicLong(0);
 
 
 
@@ -101,22 +105,19 @@ public class RpcManagerImpl implements RpcManager {
       List<Address> members = t.getMembers();
       byte rpcId=rpcCommand.getCommandId();
       boolean exception_thrown=false;
+      List<Response> result=null;
       if (members.size() < 2) {
          if (log.isDebugEnabled())
             log.debug("We're the only member in the cluster; Don't invoke remotely.");
          return Collections.emptyList();
       } else {
          long startTime = 0;
-         if (statisticsEnabled) startTime = System.nanoTime();
+         if (statisticsEnabled){
+            startTime = System.nanoTime();
+         }
          try {
-            List<Response> result = t.invokeRemotely(recipients, rpcCommand, mode, timeout, usePriorityQueue, responseFilter, stateTransferEnabled);
-            if (isStatisticsEnabled()){
-                replicationCount.incrementAndGet();
-                //SEBDIE  (Changed also millisTOnano)
-                if (rpcId==(CommitCommand.COMMAND_ID) || rpcId==(PassiveReplicationCommand.COMMAND_ID)){
-                   committedReplicationCount.incrementAndGet();
-                }
-            }
+            result = t.invokeRemotely(recipients, rpcCommand, mode, timeout, usePriorityQueue, responseFilter, stateTransferEnabled);
+
             return result;
          } catch (CacheException e) {
             exception_thrown=true;
@@ -124,7 +125,9 @@ public class RpcManagerImpl implements RpcManager {
                log.trace("replication exception: ", e);
             }
 
-            if (isStatisticsEnabled()) replicationFailures.incrementAndGet();
+            if (isStatisticsEnabled()){
+               replicationFailures.incrementAndGet();
+            }
             throw e;
          } catch (Throwable th) {
             exception_thrown=true;
@@ -141,18 +144,19 @@ public class RpcManagerImpl implements RpcManager {
                 We don't put an explicit condition to consider the non-default case since the model
                 is designed to work with the async commit
                 */
-               if((rpcId==CommitCommand.COMMAND_ID || rpcId==PassiveReplicationCommand.COMMAND_ID) && !exception_thrown){
-                   txSuccessfulReplicationTime.getAndAdd(timeTaken);
+               if(rpcCommand instanceof PrepareCommand || rpcCommand instanceof PassiveReplicationCommand){
+                  txReplicationTime.getAndAdd(timeTaken);
+                  if(!exception_thrown){
+                     txSuccessfulReplicationTime.getAndAdd(timeTaken);
+                     this.successfulRTT.getAndAdd(timeTaken-getMaxReplayTime(result));
+                     committedReplicationCount.incrementAndGet();
                }
-               if(rpcId==(PrepareCommand.COMMAND_ID) || rpcId==(PassiveReplicationCommand.COMMAND_ID)){
-                 txReplicationTime.getAndAdd(timeTaken);
 
-            }
-         }
-      }
+              }
+          }
+       }
    }
-   }
-
+}
    public final List<Response> invokeRemotely(Collection<Address> recipients, ReplicableCommand rpcCommand, ResponseMode mode, long timeout, boolean usePriorityQueue) {
       return invokeRemotely(recipients, rpcCommand, mode, timeout, usePriorityQueue, null);
    }
@@ -432,6 +436,14 @@ public class RpcManagerImpl implements RpcManager {
       return (totalReplicationTime.get()/1000000) / replicationCount.get();
    }
 
+
+   @ManagedAttribute(description= "The average RTT time")
+   public long getRTT(){
+       if(this.committedReplicationCount.get()==0)
+           return 0;
+       return this.successfulRTT.get()/this.committedReplicationCount.get();
+   }
+
    @ManagedOperation(description = "Reset Statitics relevant to commit duration")
    @Operation(displayName = "Reset commit statistics")
    public void resetCommitStats(){
@@ -448,4 +460,20 @@ public class RpcManagerImpl implements RpcManager {
    public Address getAddress() {
       return t != null ? t.getAddress() : null;
    }
+
+
+
+    private long getMaxReplayTime(List<Response> list){
+        long max=0;
+        ExtendedResponse temp;
+        for(Response sux : list){
+           temp=(ExtendedResponse)sux;
+           if(temp.getReplayTime()>max){
+               System.out.println("replayTime= "+temp.getReplayTime());
+               max=temp.getReplayTime();
+           }
+        }
+        System.out.println("Ho scelto "+max);
+        return max;
+    }
 }

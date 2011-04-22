@@ -38,11 +38,15 @@ import org.infinispan.util.Util;
 public class ExtendedResponse extends ValidResponse {
    private final boolean replayIgnoredRequests;
    private final Response response;
+   private long replayTime=0;
 
    public ExtendedResponse(Response response, boolean replayIgnoredRequests) {
       this.response = response;
       this.replayIgnoredRequests = replayIgnoredRequests;
    }
+
+
+
 
    public boolean isReplayIgnoredRequests() {
       return replayIgnoredRequests;
@@ -56,18 +60,33 @@ public class ExtendedResponse extends ValidResponse {
       return response.isSuccessful();
    }
 
+   public long getReplayTime(){
+      return this.replayTime;
+   }
+
+   public void setReplayTime(long rt){
+       this.replayTime=rt;
+   }
+
+
    public static class Externalizer extends AbstractExternalizer<ExtendedResponse> {
       @Override
       public void writeObject(ObjectOutput output, ExtendedResponse er) throws IOException {
          output.writeBoolean(er.replayIgnoredRequests);
          output.writeObject(er.response);
+         //DIE
+         output.writeLong(er.replayTime);
       }
 
       @Override
       public ExtendedResponse readObject(ObjectInput input) throws IOException, ClassNotFoundException {
          boolean replayIgnoredRequests = input.readBoolean();
          Response response = (Response) input.readObject();
-         return new ExtendedResponse(response, replayIgnoredRequests);
+         //DIE
+         long replay = input.readLong();
+          ExtendedResponse er=  new ExtendedResponse(response, replayIgnoredRequests);
+          er.setReplayTime(replay);
+         return  er;
       }
 
       @Override

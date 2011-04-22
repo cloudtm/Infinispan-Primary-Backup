@@ -304,7 +304,7 @@ public class LockingInterceptor extends CommandInterceptor {
    @Override
    public Object visitPutKeyValueCommand(InvocationContext ctx, PutKeyValueCommand command) throws Throwable {
       try {
-         entryFactory.EntryForWriting(ctx, command.getKey(), true, false, false, false, !command.isPutIfAbsent());
+         entryFactory.wrapEntryForWriting(ctx, command.getKey(), true, false, false, false, !command.isPutIfAbsent());
          return invokeNextInterceptor(ctx, command);
       } catch (Throwable te) {
          return cleanLocksAndRethrow(ctx, te);
