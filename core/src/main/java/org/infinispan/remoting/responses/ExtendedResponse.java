@@ -38,6 +38,7 @@ import org.infinispan.util.Util;
 public class ExtendedResponse extends ValidResponse {
    private final boolean replayIgnoredRequests;
    private final Response response;
+   //SEBDIE
    private long replayTime=0;
 
    public ExtendedResponse(Response response, boolean replayIgnoredRequests) {
@@ -74,7 +75,7 @@ public class ExtendedResponse extends ValidResponse {
       public void writeObject(ObjectOutput output, ExtendedResponse er) throws IOException {
          output.writeBoolean(er.replayIgnoredRequests);
          output.writeObject(er.response);
-         //DIE
+         //SEBDIE
          output.writeLong(er.replayTime);
       }
 
@@ -82,7 +83,7 @@ public class ExtendedResponse extends ValidResponse {
       public ExtendedResponse readObject(ObjectInput input) throws IOException, ClassNotFoundException {
          boolean replayIgnoredRequests = input.readBoolean();
          Response response = (Response) input.readObject();
-         //DIE
+         //SEBDIE
          long replay = input.readLong();
           ExtendedResponse er=  new ExtendedResponse(response, replayIgnoredRequests);
           er.setReplayTime(replay);

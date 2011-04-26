@@ -469,11 +469,9 @@ public class RpcManagerImpl implements RpcManager {
         for(Response sux : list){
            temp=(ExtendedResponse)sux;
            if(temp.getReplayTime()>max){
-               System.out.println("replayTime= "+temp.getReplayTime());
                max=temp.getReplayTime();
            }
         }
-        System.out.println("Ho scelto "+max);
         return max;
     }
 }

@@ -200,7 +200,6 @@ public class CommandAwareRpcDispatcher extends RpcDispatcher {
              which contains the information about the replication time
              */
             if(cmd instanceof PassiveReplicationCommand || cmd instanceof PrepareCommand){
-               System.out.println("Sto scrivendo time to replay pari a "+time_to_replay);
                ((ExtendedResponse)resp).setReplayTime(time_to_replay);
             }
 
