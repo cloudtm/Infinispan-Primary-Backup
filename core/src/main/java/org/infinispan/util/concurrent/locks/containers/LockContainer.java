@@ -59,4 +59,7 @@ public interface LockContainer {
     * @param key Object on which lock is to be removed  
     */
    void releaseLock(Object key);
+
+   long holdTime(Object key);
+
 }

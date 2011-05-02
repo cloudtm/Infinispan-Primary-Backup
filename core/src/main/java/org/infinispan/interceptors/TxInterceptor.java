@@ -69,14 +69,16 @@ public class TxInterceptor extends CommandInterceptor {
    private final AtomicLong prepares = new AtomicLong(0);
    private final AtomicLong commits = new AtomicLong(0);
    private final AtomicLong rollbacks = new AtomicLong(0);
-   private final AtomicLong global_wrt_tx_commits = new AtomicLong(0);//SEB
-   private final AtomicLong wrt_tx_commits = new AtomicLong(0); //SEBDIE
+   private final AtomicLong global_wrt_tx_commits = new AtomicLong(0);//SEB  # of commit in the system
+   private final AtomicLong wrt_tx_commits = new AtomicLong(0); //SEBDIE     # of commit relevant to LOCAL txs
    private final AtomicLong wrt_tx_got_to_prepare = new AtomicLong(0); //SEB
    private final AtomicLong wrt_tx_started= new AtomicLong(0);//SEB
    private final AtomicLong wrt_tx_local_exec= new AtomicLong(0); //SEBDIE
    private final AtomicLong wrt_sux_tx_local_exec = new AtomicLong(0); //SEBDIE
    private final AtomicLong rd_tx_exec= new AtomicLong(0);//SEBDIE
    private final AtomicLong rd_tx=new AtomicLong(0); //SEBDIE
+   private final AtomicLong numPuts= new AtomicLong(0); //SeBDIE
+   private final AtomicLong commitTime = new AtomicLong(0); //SEBDIE
 
 
 
@@ -241,7 +243,13 @@ public class TxInterceptor extends CommandInterceptor {
          }
 
       }
+      long commitTime=0;
+      if(statisticsEnabled && ctx.isInTxScope() && ctx.isOriginLocal()){
+           commitTime=System.nanoTime();
+      }
       Object result = invokeNextInterceptor(ctx, command);
+      commitTime=commitTime-System.nanoTime();
+      this.commitTime.addAndGet(commitTime);
       transactionLog.logCommit(command.getGlobalTransaction());
 
       return result;
@@ -324,6 +332,9 @@ public class TxInterceptor extends CommandInterceptor {
       Object rv=null;
       //SEBDIE
       try{
+         if(statisticsEnabled && ctx.isInTxScope() && ctx.isOriginLocal()){
+             this.numPuts.incrementAndGet();
+         }
          rv = invokeNextInterceptor(ctx, command);
       }
       catch(Throwable th){
@@ -350,7 +361,10 @@ public class TxInterceptor extends CommandInterceptor {
       if (!localTransaction.isEnlisted()) { //make sure that you only enlist it once
          try {
             transaction.enlistResource(new TransactionXaAdapter(localTransaction, txTable, commandsFactory, configuration, invoker, icc));
-            localTransaction.startTimer();
+             //DIE
+             if(statisticsEnabled){
+                localTransaction.startTimer();
+             }
          } catch (Exception e) {
             Xid xid = localTransaction.getXid();
             if (xid != null && !ctx.getLockedKeys().isEmpty()) {
@@ -530,6 +544,17 @@ public class TxInterceptor extends CommandInterceptor {
     }
 
 
+    @ManagedAttribute(description = "Num put operations")
+    public long getNumPuts(){
+        return this.numPuts.get();
+    }
+
+    @ManagedAttribute(description = "Time spent to handle a commit command")
+    public long getCommitTime(){
+        if(this.wrt_tx_commits.get()==0)
+            return 0;
+        return this.commitTime.get()/wrt_tx_commits;
+    }
 
    /**
     * Designed to be overridden.  Returns a VisitableCommand fit for replaying locally, based on the modification passed

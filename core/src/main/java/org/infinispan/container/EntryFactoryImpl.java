@@ -228,13 +228,6 @@ public class EntryFactoryImpl implements EntryFactory {
             if (key instanceof MarshalledValue) {
                key = ((MarshalledValue) key).get();
             }
-             //DIE
-             if(ctx.isInTxScope()){
-                LockManagerImpl actualLockManager = (LockManagerImpl)(this.lockManager);
-		if(owner!=null){
-                	actualLockManager.updateDeadlockStats(((TxInvocationContext)ctx).isOriginLocal(),!(((GlobalTransaction)(owner)).isRemote()));
-                }
-	     }
 
             throw new TimeoutException("Unable to acquire lock after [" + Util.prettyPrintTime(getLockAcquisitionTimeout(ctx)) + "] on key [" + key + "] for requestor [" +
                   ctx.getLockOwner() + "]! Lock held by [" + owner + "]");

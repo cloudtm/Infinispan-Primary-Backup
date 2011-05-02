@@ -353,7 +353,7 @@ public class RpcManagerImpl implements RpcManager {
    }
 
    @ManagedAttribute(description = "Average time spent in the transport layer to replicate a transaction (aborted or completed)" )
-   @Metric(displayName = "Avg commit time")
+   @Metric(displayName = "Avg transport-layer commit time")
    public long getAvgCommitTime(){
       if (!isStatisticsEnabled()){
          return -1;
@@ -366,7 +366,7 @@ public class RpcManagerImpl implements RpcManager {
    }
    
    @ManagedAttribute(description = "Average time spent in the transport layer to replicate successfully a transaction " )
-   @Metric(displayName = "Avg successful commit time")
+   @Metric(displayName = "Avg transport-layer successful commit time")
    public long getAvgSuccessfulCommitTime(){
       if (committedReplicationCount.get()==0){
           return -1;
@@ -470,6 +470,7 @@ public class RpcManagerImpl implements RpcManager {
            temp=(ExtendedResponse)sux;
            if(temp.getReplayTime()>max){
                max=temp.getReplayTime();
+
            }
         }
         return max;

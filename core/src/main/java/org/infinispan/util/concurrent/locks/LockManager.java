@@ -115,4 +115,9 @@ public interface LockManager {
     * @return an integer
     */
    int getNumberOfLocksHeld();
+
+   /*
+   Retrieves the hold time for the lock relevant to key
+    */
+   long holdTime(Object key);
 }

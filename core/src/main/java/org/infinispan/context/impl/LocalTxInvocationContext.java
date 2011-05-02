@@ -122,4 +122,13 @@ public class LocalTxInvocationContext extends AbstractTxInvocationContext {
    public boolean hasAlreadyWritten(){
       return this.localTransaction.hasAlreadyWritten();
    }
+
+
+   public long getCommitTime(){
+       return this.localTransaction.getCommitTime();
+   }
+
+   public void startCommit(){
+       this.localTransaction.startCommit();
+   }
 }

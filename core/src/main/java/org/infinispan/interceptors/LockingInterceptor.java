@@ -391,7 +391,10 @@ public class LockingInterceptor extends CommandInterceptor {
    }
 
    private void cleanupLocks(InvocationContext ctx, boolean commit) {
-      if (commit) {
+       //DIE
+         long holdTime=0;
+       if (commit) {
+
          Object owner = ctx.getLockOwner();
          ReversibleOrderedSet<Map.Entry<Object, CacheEntry>> entries = ctx.getLookedUpEntries().entrySet();
          Iterator<Map.Entry<Object, CacheEntry>> it = entries.reverseIterator();
@@ -411,6 +414,8 @@ public class LockingInterceptor extends CommandInterceptor {
             // and then unlock
             if (needToUnlock && !ctx.hasFlag(Flag.SKIP_LOCKING)) {
                if (trace) log.trace("Releasing lock on [" + key + "] for owner " + owner);
+
+               holdTime+=lockManager.holdTime(key);
                lockManager.unlock(key);
             }
          }
@@ -433,7 +438,16 @@ public class LockingInterceptor extends CommandInterceptor {
 
       } else {
          lockManager.releaseLocks(ctx);
+         //DIE
+         if(ctx.isInTxScope())
+             holdTime+=((TxInvocationContext)ctx).getAbortedHoldTime();
       }
+
+       if(ctx.isInTxScope()){
+
+           LockManagerImpl actualLockManager=(LockManagerImpl)this.lockManager;
+           actualLockManager.updateHoldTime((TxInvocationContext)ctx, holdTime);
+       }
    }
 
    private Object cleanLocksAndRethrow(InvocationContext ctx, Throwable te) throws Throwable {

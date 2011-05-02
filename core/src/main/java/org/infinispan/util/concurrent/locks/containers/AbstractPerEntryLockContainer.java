@@ -1,5 +1,8 @@
 package org.infinispan.util.concurrent.locks.containers;
 
+import org.infinispan.util.concurrent.locks.OwnableReentrantLock;
+import org.infinispan.util.concurrent.locks.OwnableReentrantStubbornLock;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -75,4 +78,16 @@ public abstract class AbstractPerEntryLockContainer implements LockContainer {
       Lock l = locks.remove(key);
       if (l != null) l.unlock();
    }
+
+   public long holdTime(Object key){
+       Lock l= locks.get(key);
+       if(l instanceof OwnableReentrantLock){
+           return ((OwnableReentrantLock) l).holdTime();
+        }
+       return 0;
+   }
+
+
+
+
 }

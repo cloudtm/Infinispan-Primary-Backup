@@ -10,6 +10,7 @@ import org.infinispan.util.InfinispanCollections;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
 
+import javax.sound.midi.SysexMessage;
 import javax.transaction.Transaction;
 import javax.transaction.xa.Xid;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ public class LocalTransaction extends AbstractCacheTransaction {
    */
    private long waited_time_on_locks=0;
    private long lifeTime=0;
+   private long commitTime=0;
    private boolean alreadyWritten=false;
 
    private Set<Address> remoteLockedNodes;
@@ -151,5 +153,13 @@ public class LocalTransaction extends AbstractCacheTransaction {
 
     public void setAlreadyWritten(){
         this.alreadyWritten=true;
+    }
+
+    public void startCommitTime(){
+        this.commitTime=System.nanoTime();
+    }
+
+    public long getCommitTime(){
+        return (this.commitTime=this.commitTime- System.nanoTime());
     }
 }

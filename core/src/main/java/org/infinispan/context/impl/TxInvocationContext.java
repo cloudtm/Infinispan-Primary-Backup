@@ -57,4 +57,9 @@ public interface TxInvocationContext extends InvocationContext {
     * or false otherwise.
     */
    boolean isRunningTransactionValid();
+
+
+   //die
+   void addAbortedHoldTime(long holdTime);
+   long getAbortedHoldTime();
 }

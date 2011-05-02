@@ -20,6 +20,8 @@ import java.util.Set;
 public abstract class AbstractTxInvocationContext extends AbstractInvocationContext implements TxInvocationContext {
 
    protected Set<Object> affectedKeys = null;
+   //DIE
+   public long abortedHoldTime=0;
 
    public boolean hasModifications() {
       return getModifications() != null && !getModifications().isEmpty();
@@ -49,5 +51,13 @@ public abstract class AbstractTxInvocationContext extends AbstractInvocationCont
          dolly.affectedKeys = new HashSet<Object>(affectedKeys);
       }
       return dolly;
+   }
+
+   public void addAbortedHoldTime(long hold){
+       this.abortedHoldTime+=hold;
+   }
+
+   public long getAbortedHoldTime(){
+       return this.abortedHoldTime;
    }
 }

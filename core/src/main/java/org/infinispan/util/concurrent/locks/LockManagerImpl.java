@@ -84,6 +84,9 @@ public class LockManagerImpl implements LockManager {
     private AtomicLong remoteLocalDeadlock=new AtomicLong(0);
     private AtomicLong remoteRemoteDeadlock=new AtomicLong(0);
     private AtomicLong commitedLocalTx=new AtomicLong(0);
+    private AtomicLong commitedRemoteTx = new AtomicLong(0);
+    private AtomicLong remoteHoldTime = new AtomicLong(0);
+    private AtomicLong localHoldTime = new AtomicLong(0);
 
    @Inject
    public void injectDependencies(Configuration configuration, TransactionManager transactionManager, InvocationContextContainer invocationContextContainer) {
@@ -155,6 +158,13 @@ public class LockManagerImpl implements LockManager {
       lockContainer.releaseLock(key);
    }
 
+
+   //DiE
+    public long holdTime(Object key){
+        return lockContainer.holdTime(key);
+
+    }
+
    @SuppressWarnings("unchecked")
    public void unlock(InvocationContext ctx) {
       ReversibleOrderedSet<Map.Entry<Object, CacheEntry>> entries = ctx.getLookedUpEntries().entrySet();
@@ -169,6 +179,7 @@ public class LockManagerImpl implements LockManager {
                Object k = e.getKey();
                if (trace) log.trace("Attempting to unlock " + k);
                lockContainer.releaseLock(k);
+
             }
          }
       }
@@ -224,6 +235,10 @@ public class LockManagerImpl implements LockManager {
          // and then unlock
          if (needToUnlock) {
             if (trace) log.trace("Releasing lock on [" + key + "] for owner " + owner);
+            //DIE
+            if(ctx.isInTxScope()){
+               ((TxInvocationContext)ctx).addAbortedHoldTime(this.holdTime(key));
+            }
             unlock(key);
          }
       }
@@ -275,20 +290,39 @@ public class LockManagerImpl implements LockManager {
    }
 
 
-    public void updateDeadlockStats(boolean amILocal, boolean isItLocal){
+   public void updateHoldTime(TxInvocationContext ctx, long hold){
+       if(ctx.isOriginLocal())
+           this.localHoldTime.addAndGet(hold);
+       else{
+           this.remoteHoldTime.addAndGet(hold);
+           this.commitedRemoteTx.incrementAndGet();
+       }
 
-            if(amILocal && isItLocal )
-               this.localLocalDeadlock.incrementAndGet();
-            else if(amILocal && !isItLocal)
-               this.localRemoteDeadlock.incrementAndGet();
-            else if(!amILocal && isItLocal)
-               this.remoteLocalDeadlock.incrementAndGet();
-            else
-               this.remoteRemoteDeadlock.incrementAndGet();
+   }
+
+    @ManagedAttribute(description = "Average local lock hold time" )
+    public long getLocalHoldTime(){
+        if(commitedLocalTx.get()==0)
+            return 0;
+        return this.localHoldTime.get()/commitedLocalTx.get();
+    }
 
 
-     }
 
+
+    @ManagedAttribute(description = "Average remote lock hold time" )
+    public long getRemoteHoldTime(){
+        if(commitedRemoteTx.get()==0)
+            return 0;
+        return this.remoteHoldTime.get()/commitedRemoteTx.get();
+    }
+
+    @ManagedAttribute(description = "Average lock hold time" )
+    public long getHoldTime(){
+        if(commitedRemoteTx.get()+commitedLocalTx.get()==0)
+            return 0;
+        return (this.localHoldTime.get()+this.remoteHoldTime.get())/(this.commitedLocalTx.get()+this.commitedRemoteTx.get());
+    }
 
    //DIE
    @ManagedAttribute(description = "The number of contentions among local transactions")
@@ -315,31 +349,6 @@ public class LockManagerImpl implements LockManager {
        return this.remoteRemoteContentions.get();
     }
 
-
-      //DIE
-   @ManagedAttribute(description = "The number of contentions among local transactions")
-   @Metric(displayName = "LocalLocalDeadlock")
-    public long getLocalLocalDeadlock(){
-       return this.localLocalDeadlock.get();
-    }
-    //DIE
-    @ManagedAttribute(description = "The number of Deadlock among local transactions with remote ones")
-    @Metric(displayName = "LocalRemoteDeadlock")
-    public long getLocalRemoteDeadlock(){
-        return this.localRemoteDeadlock.get();
-    }
-    //DIE
-    @ManagedAttribute(description = "The number of Deadlock among remote transactions and local ones")
-    @Metric(displayName = "RemoteLocalDeadlock")
-    public long getRemoteLocalDeadlock(){
-         return this.remoteLocalDeadlock.get();
-    }
-    //DIE
-    @ManagedAttribute(description = "The number of Deadlock among remote transactions")
-    @Metric(displayName = "RemoteRemoteDeadlock")
-    public long getRemoteRemoteDeadlock(){
-       return this.remoteRemoteDeadlock.get();
-    }
 
     //DIE
     @ManagedAttribute(description = "Average time spent waiting for locks during the execution of a transaction (committed txs only)")

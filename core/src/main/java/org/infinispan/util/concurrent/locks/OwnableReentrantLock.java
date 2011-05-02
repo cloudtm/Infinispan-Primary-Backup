@@ -48,6 +48,9 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
 
    private static final long serialVersionUID = 4932974734462848792L;
 
+   private long holdTime=0;
+
+
    /**
     * Current owner
     */
@@ -69,6 +72,17 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
       this.icc = icc;
    }
 
+    //DIE
+    public void hold(){
+        System.out.println("Chiamata hold");
+        holdTime=System.nanoTime();
+    }
+
+    public long holdTime(){
+         System.out.println("Chiamata holdTime()");
+         return System.nanoTime()-holdTime;
+    }
+
    /**
     * @return a GlobalTransaction instance if the current call is participating in a transaction, or the current thread
     *         otherwise.
@@ -79,8 +93,10 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
    }
 
    public void lock() {
-      if (compareAndSetState(0, 1))
+      if (compareAndSetState(0, 1)){
          owner = currentRequestor();
+
+      }
       else
          acquire(1);
    }
@@ -116,6 +132,9 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
       int c = getState();
       if (c == 0) {
          if (compareAndSetState(0, acquires)) {
+             //DIE
+            hold();
+
             owner = current;
             return true;
          }

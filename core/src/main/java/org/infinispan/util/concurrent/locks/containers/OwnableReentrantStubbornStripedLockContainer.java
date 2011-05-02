@@ -18,4 +18,6 @@ public class OwnableReentrantStubbornStripedLockContainer extends OwnableReentra
       sharedLocks = new OwnableReentrantStubbornLock[numLocks];
       for (int i = 0; i < numLocks; i++) sharedLocks[i] = new OwnableReentrantStubbornLock(icc);
    }
+
+
 }
