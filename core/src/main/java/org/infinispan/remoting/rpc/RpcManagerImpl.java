@@ -68,6 +68,8 @@ public class RpcManagerImpl implements RpcManager {
    private final AtomicLong txReplicationTime = new AtomicLong(0);
    private final AtomicLong txSuccessfulReplicationTime=new AtomicLong(0);
    private final AtomicLong successfulRTT= new AtomicLong(0);
+   private final AtomicLong avgReplayTime = new AtomicLong(0);      //Time spent to replay modifications (based on piggybacked info)
+   private final AtomicLong avgSuxReplayTime = new AtomicLong(0);   //Time spent to replay successful modifications
 
 
 
@@ -147,10 +149,17 @@ public class RpcManagerImpl implements RpcManager {
                if(rpcCommand instanceof PrepareCommand || rpcCommand instanceof PassiveReplicationCommand){
                   txReplicationTime.getAndAdd(timeTaken);
                   if(!exception_thrown){
-                     txSuccessfulReplicationTime.getAndAdd(timeTaken);
-                     this.successfulRTT.getAndAdd(timeTaken-getMaxReplayTime(result));
+                     txSuccessfulReplicationTime.getAndAdd(timeTaken);        //time spent in transport layer
+                     long maxReplayTime= getMaxReplayTime(result);
+                     avgSuxReplayTime.addAndGet(maxReplayTime);
+                     avgReplayTime.addAndGet(maxReplayTime);
+                     committedReplicationCount.incrementAndGet();
+                     this.successfulRTT.getAndAdd(timeTaken-maxReplayTime);
                      committedReplicationCount.incrementAndGet();
                }
+                   else{
+                     avgReplayTime.addAndGet(timeout*1000000); //timeout is in millis, stats are nanos
+                  }
 
               }
           }
@@ -353,8 +362,8 @@ public class RpcManagerImpl implements RpcManager {
    }
 
    @ManagedAttribute(description = "Average time spent in the transport layer to replicate a transaction (aborted or completed)" )
-   @Metric(displayName = "Avg transport-layer commit time")
-   public long getAvgCommitTime(){
+   @Metric(displayName = "Avg transport-layer prepare time")
+   public long getAvgPrepareTime(){
       if (!isStatisticsEnabled()){
          return -1;
       }
@@ -366,8 +375,8 @@ public class RpcManagerImpl implements RpcManager {
    }
    
    @ManagedAttribute(description = "Average time spent in the transport layer to replicate successfully a transaction " )
-   @Metric(displayName = "Avg transport-layer successful commit time")
-   public long getAvgSuccessfulCommitTime(){
+   @Metric(displayName = "Avg transport-layer successful prepare time")
+   public long getAvgSuccessfulPrepareTime(){
       if (committedReplicationCount.get()==0){
           return -1;
       }
@@ -444,12 +453,35 @@ public class RpcManagerImpl implements RpcManager {
        return this.successfulRTT.get()/this.committedReplicationCount.get();
    }
 
-   @ManagedOperation(description = "Reset Statitics relevant to commit duration")
-   @Operation(displayName = "Reset commit statistics")
-   public void resetCommitStats(){
+   @ManagedOperation(description = "Reset transport layer custom statistics")
+   @Operation(displayName = "Reset custom stats")
+   public void resetStats(){
+      System.out.println("Sto resettando le statistiche");
       this.committedReplicationCount.set(0);
       this.txReplicationTime.set(0);
+      this.txSuccessfulReplicationTime.set(0);
+      this.successfulRTT.set(0);
+      this.avgReplayTime.set(0);
+      this.avgSuxReplayTime.set(0);
+
    }
+
+    @ManagedAttribute(description = "Average successful replay time")
+    public long getAvgReplayTime(){
+        if(this.committedReplicationCount.get()==0){
+            return 0;
+        }
+        return this.avgReplayTime.get()/committedReplicationCount.get();
+    }
+
+    @ManagedAttribute(description = "Average successful replay time")
+    public long getSuccessfulAvgReplayTime(){
+        if(this.committedReplicationCount.get()==0){
+            return 0;
+        }
+        return this.avgSuxReplayTime.get()/committedReplicationCount.get();
+    }
+
 
    // mainly for unit testing
    public void setTransport(Transport t) {

@@ -414,8 +414,9 @@ public class LockingInterceptor extends CommandInterceptor {
             // and then unlock
             if (needToUnlock && !ctx.hasFlag(Flag.SKIP_LOCKING)) {
                if (trace) log.trace("Releasing lock on [" + key + "] for owner " + owner);
-
-               holdTime+=lockManager.holdTime(key);
+               if(ctx.isInTxScope()){
+                 holdTime+=lockManager.holdTime(key);
+               }
                lockManager.unlock(key);
             }
          }
@@ -440,13 +441,13 @@ public class LockingInterceptor extends CommandInterceptor {
          lockManager.releaseLocks(ctx);
          //DIE
          if(ctx.isInTxScope())
-             holdTime+=((TxInvocationContext)ctx).getAbortedHoldTime();
+             holdTime=((TxInvocationContext)ctx).getAbortedHoldTime();
       }
 
        if(ctx.isInTxScope()){
 
            LockManagerImpl actualLockManager=(LockManagerImpl)this.lockManager;
-           actualLockManager.updateHoldTime((TxInvocationContext)ctx, holdTime);
+           actualLockManager.updateHoldTime((TxInvocationContext)ctx, holdTime,commit);
        }
    }
 

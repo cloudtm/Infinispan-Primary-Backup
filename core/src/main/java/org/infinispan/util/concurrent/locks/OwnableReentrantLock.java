@@ -48,7 +48,8 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
 
    private static final long serialVersionUID = 4932974734462848792L;
 
-   private long holdTime=0;
+   transient long holdTime=0;
+   transient boolean already_held=false;
 
 
    /**
@@ -74,13 +75,21 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
 
     //DIE
     public void hold(){
-        System.out.println("Chiamata hold");
+        //Se locko un oggetto già esistente nel container, devo ripristinargli l'already held
+        if(already_held)
+            System.out.println("Chiesto lock due volte!");
+        already_held=false;
         holdTime=System.nanoTime();
     }
 
     public long holdTime(){
-         System.out.println("Chiamata holdTime()");
-         return System.nanoTime()-holdTime;
+        if(already_held){
+            System.out.println("HoldTime() invocata piu' volte. (Attenzione a quando un lock viene preso direttamente da un altro thread)");
+            //System.exit(0);
+        }
+        long heldTime=System.nanoTime()-holdTime;
+        already_held=true;
+         return heldTime;
     }
 
    /**

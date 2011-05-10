@@ -248,7 +248,10 @@ public class TxInterceptor extends CommandInterceptor {
            commitTime=System.nanoTime();
       }
       Object result = invokeNextInterceptor(ctx, command);
-      commitTime=commitTime-System.nanoTime();
+        if(statisticsEnabled && ctx.isInTxScope() && ctx.isOriginLocal()){
+          commitTime=System.nanoTime()-commitTime;
+      }
+
       this.commitTime.addAndGet(commitTime);
       transactionLog.logCommit(command.getGlobalTransaction());
 
@@ -553,7 +556,7 @@ public class TxInterceptor extends CommandInterceptor {
     public long getCommitTime(){
         if(this.wrt_tx_commits.get()==0)
             return 0;
-        return this.commitTime.get()/wrt_tx_commits;
+        return this.commitTime.get()/wrt_tx_commits.get();
     }
 
    /**

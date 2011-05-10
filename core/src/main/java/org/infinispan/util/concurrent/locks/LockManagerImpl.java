@@ -87,6 +87,7 @@ public class LockManagerImpl implements LockManager {
     private AtomicLong commitedRemoteTx = new AtomicLong(0);
     private AtomicLong remoteHoldTime = new AtomicLong(0);
     private AtomicLong localHoldTime = new AtomicLong(0);
+    private AtomicLong holdLocalTransaction = new AtomicLong(0);
 
    @Inject
    public void injectDependencies(Configuration configuration, TransactionManager transactionManager, InvocationContextContainer invocationContextContainer) {
@@ -266,6 +267,7 @@ public class LockManagerImpl implements LockManager {
    public void updateWaitedTimeOnLockStats(long waitedTime){
         this.committedTimeWaitedOnLocks.addAndGet(waitedTime);
         this.commitedLocalTx.incrementAndGet();
+       //System.out.println(commitedLocalTx.get());
    }
 
    //DIE
@@ -290,21 +292,25 @@ public class LockManagerImpl implements LockManager {
    }
 
 
-   public void updateHoldTime(TxInvocationContext ctx, long hold){
-       if(ctx.isOriginLocal())
+   public void updateHoldTime(TxInvocationContext ctx, long hold,boolean commit){
+       if(ctx.isOriginLocal()){
            this.localHoldTime.addAndGet(hold);
+           this.holdLocalTransaction.incrementAndGet();
+       }
        else{
            this.remoteHoldTime.addAndGet(hold);
-           this.commitedRemoteTx.incrementAndGet();
+           if(commit){
+              this.commitedRemoteTx.incrementAndGet();
+           }
        }
 
    }
 
     @ManagedAttribute(description = "Average local lock hold time" )
     public long getLocalHoldTime(){
-        if(commitedLocalTx.get()==0)
+        if(holdLocalTransaction.get()==0)
             return 0;
-        return this.localHoldTime.get()/commitedLocalTx.get();
+        return this.localHoldTime.get()/holdLocalTransaction.get();
     }
 
 
@@ -319,9 +325,9 @@ public class LockManagerImpl implements LockManager {
 
     @ManagedAttribute(description = "Average lock hold time" )
     public long getHoldTime(){
-        if(commitedRemoteTx.get()+commitedLocalTx.get()==0)
+        if(commitedRemoteTx.get()+holdLocalTransaction.get()==0)
             return 0;
-        return (this.localHoldTime.get()+this.remoteHoldTime.get())/(this.commitedLocalTx.get()+this.commitedRemoteTx.get());
+        return (this.localHoldTime.get()+this.remoteHoldTime.get())/(this.holdLocalTransaction.get()+this.commitedRemoteTx.get());
     }
 
    //DIE
