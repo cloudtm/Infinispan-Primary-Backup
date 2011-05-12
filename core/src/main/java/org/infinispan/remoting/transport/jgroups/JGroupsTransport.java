@@ -56,6 +56,7 @@ import org.jgroups.protocols.pbcast.STREAMING_STATE_TRANSFER;
 import org.jgroups.stack.ProtocolStack;
 import org.jgroups.util.Rsp;
 import org.jgroups.util.RspList;
+import java.util.Map;
 
 import java.io.InputStream;
 import java.io.OutputStream;

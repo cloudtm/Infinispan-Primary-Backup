@@ -18,6 +18,7 @@ import org.infinispan.remoting.rpc.ResponseFilter;
 import org.infinispan.remoting.rpc.ResponseMode;
 import org.infinispan.statetransfer.StateTransferException;
 import org.infinispan.util.logging.Log;
+import java.util.Map;
 
 import java.util.Collection;
 import java.util.List;
