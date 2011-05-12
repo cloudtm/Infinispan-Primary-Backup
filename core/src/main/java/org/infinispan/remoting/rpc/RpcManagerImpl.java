@@ -456,7 +456,7 @@ public class RpcManagerImpl implements RpcManager {
    @ManagedOperation(description = "Reset transport layer custom statistics")
    @Operation(displayName = "Reset custom stats")
    public void resetStats(){
-      System.out.println("Sto resettando le statistiche");
+      System.out.println("Sto resetthreadtando le statistiche");
       this.committedReplicationCount.set(0);
       this.txReplicationTime.set(0);
       this.txSuccessfulReplicationTime.set(0);
