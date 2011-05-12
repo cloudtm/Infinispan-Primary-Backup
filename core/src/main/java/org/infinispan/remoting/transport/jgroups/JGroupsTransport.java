@@ -625,4 +625,8 @@ public class JGroupsTransport extends AbstractTransport implements ExtendedMembe
    public Channel getChannel() {
       return channel;
    }
+
+    public Map<String,Object> dumpStats(){
+        return this.channel.dumpStats();
+    }
 }

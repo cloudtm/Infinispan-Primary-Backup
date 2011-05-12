@@ -140,4 +140,6 @@ public interface Transport extends Lifecycle {
    int getViewId();
 
    Log getLog();
+
+   Map<String,Object> dumpStats();
 }
