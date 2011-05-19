@@ -263,6 +263,10 @@ public class CommandAwareRpcDispatcher extends RpcDispatcher {
          Buffer buf;
          try {
             buf = req_marshaller.objectToBuffer(command);
+           /* if(command instanceof PassiveReplicationCommand || command instanceof PrepareCommand){
+                System.out.println(buf.getLength());
+            }
+           */
          } catch (Exception e) {
             throw new RuntimeException("Failure to marshal argument(s)", e);
          }

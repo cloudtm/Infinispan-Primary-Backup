@@ -15,6 +15,7 @@ import org.infinispan.factories.annotations.Start;
 import org.infinispan.jmx.annotations.MBean;
 import org.infinispan.jmx.annotations.ManagedAttribute;
 import org.infinispan.jmx.annotations.ManagedOperation;
+import org.infinispan.marshall.exts.ReplicableCommandExternalizer;
 import org.infinispan.remoting.ReplicationException;
 import org.infinispan.remoting.ReplicationQueue;
 import org.infinispan.remoting.responses.ExtendedResponse;
@@ -26,6 +27,7 @@ import org.infinispan.statetransfer.StateTransferException;
 import org.infinispan.util.concurrent.NotifyingNotifiableFuture;
 import org.infinispan.util.logging.Log;
 import org.infinispan.util.logging.LogFactory;
+import org.jboss.marshalling.ObjectOutputStreamMarshaller;
 import org.rhq.helpers.pluginAnnotations.agent.DataType;
 import org.rhq.helpers.pluginAnnotations.agent.DisplayType;
 import org.rhq.helpers.pluginAnnotations.agent.MeasurementType;
@@ -33,6 +35,12 @@ import org.rhq.helpers.pluginAnnotations.agent.Metric;
 import org.rhq.helpers.pluginAnnotations.agent.Operation;
 import org.rhq.helpers.pluginAnnotations.agent.Parameter;
 import org.rhq.helpers.pluginAnnotations.agent.Units;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import org.jboss.marshalling.Marshaller;
+
 
 import java.text.NumberFormat;
 import java.util.Collection;
@@ -70,7 +78,8 @@ public class RpcManagerImpl implements RpcManager {
    private final AtomicLong successfulRTT= new AtomicLong(0);
    private final AtomicLong avgReplayTime = new AtomicLong(0);      //Time spent to replay modifications (based on piggybacked info)
    private final AtomicLong avgSuxReplayTime = new AtomicLong(0);   //Time spent to replay successful modifications
-
+   private final AtomicLong commandSize = new AtomicLong(0);
+   private final AtomicLong numCommands = new AtomicLong(0);
 
 
    @ManagedAttribute(description = "Enables or disables the gathering of statistics by this component", writable = true)
@@ -106,8 +115,30 @@ public class RpcManagerImpl implements RpcManager {
    public final List<Response> invokeRemotely(Collection<Address> recipients, ReplicableCommand rpcCommand, ResponseMode mode, long timeout, boolean usePriorityQueue, ResponseFilter responseFilter) {
       List<Address> members = t.getMembers();
       byte rpcId=rpcCommand.getCommandId();
+      long commandSize;
       boolean exception_thrown=false;
       List<Response> result=null;
+      /*
+      if(rpcCommand instanceof PrepareCommand || rpcCommand instanceof PassiveReplicationCommand){
+          try{
+             ReplicableCommandExternalizer rce = new ReplicableCommandExternalizer();
+             ByteArrayOutputStream bStream = new ByteArrayOutputStream();
+             ObjectOutputStream oStream = new ObjectOutputStream( bStream );
+              ObjectOutputStreamMarshaller marsh= new ObjectOutputStreamMarshaller(oStream);
+             rce.writeObject(marsh,rpcCommand);
+             byte[] byteVal = bStream.toByteArray();
+             this.commandSize.addAndGet(byteVal.length);
+             this.numCommands.incrementAndGet();
+          }
+          catch(Exception e){
+              e.printStackTrace();
+              System.exit(0);
+          }
+
+
+
+      }
+     */
       if (members.size() < 2) {
          if (log.isDebugEnabled())
             log.debug("We're the only member in the cluster; Don't invoke remotely.");
@@ -480,6 +511,13 @@ public class RpcManagerImpl implements RpcManager {
             return 0;
         }
         return this.avgSuxReplayTime.get()/committedReplicationCount.get();
+    }
+
+    @ManagedAttribute(description = "Average size of a PrepareCommand sent on the network")
+    public long getPrepareCommandSize(){
+        if(this.numCommands.get()==0)
+            return 0;
+        return this.commandSize.get()/numCommands.get();
     }
 
 
