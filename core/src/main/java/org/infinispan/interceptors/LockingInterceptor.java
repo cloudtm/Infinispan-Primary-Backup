@@ -305,8 +305,8 @@ public class LockingInterceptor extends CommandInterceptor {
    public Object visitPutKeyValueCommand(InvocationContext ctx, PutKeyValueCommand command) throws Throwable {
       try {
           //DIE
-          if(ctx.isInTxScope() && false){
-              ((LockManagerImpl)this.lockManager).insertSample(command.getKey(),System.nanoTime()/1000000);//it wants msec
+          if(ctx.isInTxScope()){
+              //((LockManagerImpl)this.lockManager).insertSample(command.getKey(),System.nanoTime()/1000000);//it wants msec
           }
          entryFactory.wrapEntryForWriting(ctx, command.getKey(), true, false, false, false, !command.isPutIfAbsent());
 
