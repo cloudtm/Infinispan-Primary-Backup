@@ -60,4 +60,8 @@ public abstract class AbstractTxInvocationContext extends AbstractInvocationCont
    public long getAbortedHoldTime(){
        return this.abortedHoldTime;
    }
+
+    public void averageAbortedHoldTime(int count){
+       this.abortedHoldTime/=count;
+   }
 }

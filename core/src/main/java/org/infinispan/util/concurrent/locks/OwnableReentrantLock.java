@@ -50,6 +50,7 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
 
    transient long holdTime=0;
    transient boolean already_held=false;
+   transient boolean already_queried=false;
 
 
    /**
@@ -77,18 +78,21 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
     public void hold(){
         //Se locko un oggetto già esistente nel container, devo ripristinargli l'already held
         if(already_held)
-            System.out.println("Chiesto lock due volte!");
-        already_held=false;
+            System.out.println("Chiamata la funzione hold due volte. Il proprietario è "+getOwner()+"  e il richiedente è "+currentRequestor());
+        already_held=true;
         holdTime=System.nanoTime();
     }
 
     public long holdTime(){
-        if(already_held){
-            System.out.println("HoldTime() invocata piu' volte. (Attenzione a quando un lock viene preso direttamente da un altro thread)");
+        if(!already_held){
+            System.out.println("Chiamata holdTime con already_hel=false");
             //System.exit(0);
         }
+        if(already_queried){
+            System.out.println("Chiamata holdTime() due volte senza una release in mezzo! Proprietario "+getOwner()+" invocante "+currentRequestor());
+        }
+        already_queried=true;
         long heldTime=System.nanoTime()-holdTime;
-        already_held=true;
          return heldTime;
     }
 
@@ -166,6 +170,10 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
       if (c == 0) {
          free = true;
          owner = null;
+         //DIE
+         already_held=false;
+         already_queried=false;
+         holdTime=0;
       }
       setState(c);
       return free;

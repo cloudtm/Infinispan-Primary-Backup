@@ -35,6 +35,7 @@ import org.infinispan.jmx.annotations.MBean;
 import org.infinispan.jmx.annotations.ManagedAttribute;
 import org.infinispan.jmx.annotations.ManagedOperation;
 import org.infinispan.transaction.xa.GlobalTransaction;
+import org.infinispan.util.GlobalHistogram;
 import org.infinispan.util.ReversibleOrderedSet;
 import org.infinispan.util.concurrent.locks.containers.*;
 import org.infinispan.util.logging.Log;
@@ -79,15 +80,18 @@ public class LockManagerImpl implements LockManager {
     private AtomicLong remoteLocalContentions=new AtomicLong(0);
     private AtomicLong remoteRemoteContentions=new AtomicLong(0);
     private AtomicLong committedTimeWaitedOnLocks=new AtomicLong(0);
-    private AtomicLong localLocalDeadlock=new AtomicLong(0);
-    private AtomicLong localRemoteDeadlock=new AtomicLong(0);
-    private AtomicLong remoteLocalDeadlock=new AtomicLong(0);
-    private AtomicLong remoteRemoteDeadlock=new AtomicLong(0);
+
     private AtomicLong commitedLocalTx=new AtomicLong(0);
     private AtomicLong commitedRemoteTx = new AtomicLong(0);
     private AtomicLong remoteHoldTime = new AtomicLong(0);
     private AtomicLong localHoldTime = new AtomicLong(0);
+    private AtomicLong suxRemoteHoldTime = new AtomicLong(0);
+    private AtomicLong suxLocalHoldTime = new AtomicLong(0);
     private AtomicLong holdLocalTransaction = new AtomicLong(0);
+    private AtomicLong abortedLocalTransaction = new AtomicLong(0);
+    private AtomicLong abortedRemoteTransaction = new AtomicLong(0);
+
+    private GlobalHistogram histo = new GlobalHistogram(1,10000,10);
 
    @Inject
    public void injectDependencies(Configuration configuration, TransactionManager transactionManager, InvocationContextContainer invocationContextContainer) {
@@ -217,6 +221,7 @@ public class LockManagerImpl implements LockManager {
 
    public void releaseLocks(InvocationContext ctx) {
       Object owner = ctx.getLockOwner();
+      int heldCount=0;
       // clean up.
       // unlocking needs to be done in reverse order.
       ReversibleOrderedSet<Map.Entry<Object, CacheEntry>> entries = ctx.getLookedUpEntries().entrySet();
@@ -235,14 +240,19 @@ public class LockManagerImpl implements LockManager {
          }
          // and then unlock
          if (needToUnlock) {
-            if (trace) log.trace("Releasing lock on [" + key + "] for owner " + owner);
             //DIE
-            if(ctx.isInTxScope()){
+            if(ctx.isInTxScope() && lockContainer.ownsLock(key,owner)){
+               log.warn("Abort: Releasing lock on [" + key + "] for owner " + owner);
+               heldCount++;
                ((TxInvocationContext)ctx).addAbortedHoldTime(this.holdTime(key));
             }
             unlock(key);
          }
       }
+        if(ctx.isInTxScope() && heldCount!=0){
+           log.warn("ABORT: preHoldTime "+((TxInvocationContext)ctx).getAbortedHoldTime()+" postHoldTime "+(((TxInvocationContext)ctx).getAbortedHoldTime()/heldCount));
+           ((TxInvocationContext)ctx).averageAbortedHoldTime(heldCount);
+        }
    }
 
    @ManagedAttribute(description = "The concurrency level that the MVCC Lock Manager has been configured with.")
@@ -292,31 +302,70 @@ public class LockManagerImpl implements LockManager {
    }
 
 
+    public void insertSample(Object key, long time){
+        this.histo.insertSample(time,key);
+    }
+
+    @ManagedOperation
+    public void dumpHistogram(){
+        this.histo.dumpHistogram();
+    }
+
+
    public void updateHoldTime(TxInvocationContext ctx, long hold,boolean commit){
        if(ctx.isOriginLocal()){
            this.localHoldTime.addAndGet(hold);
-           this.holdLocalTransaction.incrementAndGet();
+           if(commit){
+               this.holdLocalTransaction.incrementAndGet();
+               this.suxLocalHoldTime.addAndGet(hold);
+           }
+           else{
+               this.abortedLocalTransaction.incrementAndGet();
+           }
        }
        else{
            this.remoteHoldTime.addAndGet(hold);
            if(commit){
               this.commitedRemoteTx.incrementAndGet();
+              this.suxRemoteHoldTime.addAndGet(hold);
+           }
+           else{
+               this.abortedRemoteTransaction.incrementAndGet();
            }
        }
 
    }
 
     @ManagedAttribute(description = "Average local lock hold time" )
+    @Metric(displayName = "LocalHoldTime")
     public long getLocalHoldTime(){
         if(holdLocalTransaction.get()==0)
             return 0;
         return this.localHoldTime.get()/holdLocalTransaction.get();
     }
 
+    @ManagedAttribute(description = "Average local lock hold time of a successful tx")
+    @Metric(displayName = "SuxLocalHoldTime")
+    public long getSuxLocalHoldTime(){
+        if(holdLocalTransaction.get()==0)
+            return 0;
+        return this.suxLocalHoldTime.get()/holdLocalTransaction.get();
+    }
+
+
+    @ManagedAttribute(description="Average remote lock hold time of a successgul tx")
+    @Metric(displayName = "suxRemoteHoldTime")
+    public long getSuxRemoteHoldTime(){
+        if(commitedRemoteTx.get()==0)
+            return 0;
+        return this.suxRemoteHoldTime.get()/commitedRemoteTx.get();
+    }
+
 
 
 
     @ManagedAttribute(description = "Average remote lock hold time" )
+    @Metric(displayName = "RemoteHoldTime")
     public long getRemoteHoldTime(){
         if(commitedRemoteTx.get()==0)
             return 0;
@@ -324,11 +373,30 @@ public class LockManagerImpl implements LockManager {
     }
 
     @ManagedAttribute(description = "Average lock hold time" )
+    @Metric(displayName = "HoldTime")
     public long getHoldTime(){
         if(commitedRemoteTx.get()+holdLocalTransaction.get()==0)
             return 0;
         return (this.localHoldTime.get()+this.remoteHoldTime.get())/(this.holdLocalTransaction.get()+this.commitedRemoteTx.get());
     }
+    @ManagedAttribute(description = "Average lock hold time of a successful transaction")
+    @Metric(displayName = "SuxHoldTime")
+    public long getSuxHoldTime(){
+        if(commitedRemoteTx.get()+holdLocalTransaction.get()==0)
+                    return 0;
+        return (this.suxLocalHoldTime.get()+this.suxRemoteHoldTime.get())/(this.holdLocalTransaction.get()+this.commitedRemoteTx.get());
+
+    }
+
+    @ManagedAttribute(description = "Hold time averaged both on committed and aborted tx")
+    @Metric(displayName = "AvgHoldTime")
+    public long getAvgHoldTime(){
+
+        return (this.remoteHoldTime.get()+this.localHoldTime.get())/(this.holdLocalTransaction.get()+this.commitedRemoteTx.get()+this.abortedLocalTransaction.get()+this.abortedRemoteTransaction.get());
+    }
+
+
+
 
    //DIE
    @ManagedAttribute(description = "The number of contentions among local transactions")
@@ -363,6 +431,12 @@ public class LockManagerImpl implements LockManager {
         if(this.commitedLocalTx.get()==0 || this.committedTimeWaitedOnLocks.get()==0)
             return 0;
         return this.committedTimeWaitedOnLocks.get()/this.commitedLocalTx.get();
+    }
+
+    @ManagedOperation(description = "Reset committed waited time on locks")
+    public void resetAvgCommittedTimeWaitedLocks(){
+        this.committedTimeWaitedOnLocks.set(0);
+        this.commitedLocalTx.set(0);
     }
 
    @ManagedOperation(description = "Resets statistics relevant to contentions")

@@ -304,8 +304,13 @@ public class LockingInterceptor extends CommandInterceptor {
    @Override
    public Object visitPutKeyValueCommand(InvocationContext ctx, PutKeyValueCommand command) throws Throwable {
       try {
+          //DIE
+          if(ctx.isInTxScope()){
+              ((LockManagerImpl)this.lockManager).insertSample(command.getKey(),System.nanoTime()/1000000);//it wants msec
+          }
          entryFactory.wrapEntryForWriting(ctx, command.getKey(), true, false, false, false, !command.isPutIfAbsent());
-         return invokeNextInterceptor(ctx, command);
+
+          return invokeNextInterceptor(ctx, command);
       } catch (Throwable te) {
          return cleanLocksAndRethrow(ctx, te);
       }
@@ -392,7 +397,8 @@ public class LockingInterceptor extends CommandInterceptor {
 
    private void cleanupLocks(InvocationContext ctx, boolean commit) {
        //DIE
-         long holdTime=0;
+       long holdTime=0;
+       int heldCount=0;
        if (commit) {
 
          Object owner = ctx.getLockOwner();
@@ -413,14 +419,20 @@ public class LockingInterceptor extends CommandInterceptor {
 
             // and then unlock
             if (needToUnlock && !ctx.hasFlag(Flag.SKIP_LOCKING)) {
-               if (trace) log.trace("Releasing lock on [" + key + "] for owner " + owner);
-               if(ctx.isInTxScope()){
+
+               if(ctx.isInTxScope() && lockManager.ownsLock(key,owner)){
+                 //log.warn("Releasing lock on [" + key + "] for owner " + owner);
                  holdTime+=lockManager.holdTime(key);
+                 heldCount++;
                }
                lockManager.unlock(key);
             }
          }
-
+         //averaging the lock hold time
+         if(ctx.isInTxScope() && heldCount>0){
+           //log.warn("preHoldTime "+holdTime+" postHoldTime "+(holdTime/heldCount)+" heldCount vale "+heldCount);
+           holdTime/=heldCount;
+         }
 
 
 

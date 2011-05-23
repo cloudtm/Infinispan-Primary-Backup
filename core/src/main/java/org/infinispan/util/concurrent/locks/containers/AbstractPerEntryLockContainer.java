@@ -80,11 +80,15 @@ public abstract class AbstractPerEntryLockContainer implements LockContainer {
    }
 
    public long holdTime(Object key){
-       Lock l= locks.get(key);
-       if(l instanceof OwnableReentrantLock){
+       //no-op
+       return 0;
+
+       /*Lock l= locks.get(key);
+       if(l instanceof OwnableReentrantLock || l instanceof OwnableReentrantStubbornLock){
            return ((OwnableReentrantLock) l).holdTime();
         }
        return 0;
+       */
    }
 
 

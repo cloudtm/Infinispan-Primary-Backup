@@ -62,4 +62,5 @@ public interface TxInvocationContext extends InvocationContext {
    //die
    void addAbortedHoldTime(long holdTime);
    long getAbortedHoldTime();
+   void averageAbortedHoldTime(int count);
 }

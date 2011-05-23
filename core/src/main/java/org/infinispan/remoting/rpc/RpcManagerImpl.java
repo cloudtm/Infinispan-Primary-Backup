@@ -78,8 +78,6 @@ public class RpcManagerImpl implements RpcManager {
    private final AtomicLong successfulRTT= new AtomicLong(0);
    private final AtomicLong avgReplayTime = new AtomicLong(0);      //Time spent to replay modifications (based on piggybacked info)
    private final AtomicLong avgSuxReplayTime = new AtomicLong(0);   //Time spent to replay successful modifications
-   private final AtomicLong commandSize = new AtomicLong(0);
-   private final AtomicLong numCommands = new AtomicLong(0);
 
 
    @ManagedAttribute(description = "Enables or disables the gathering of statistics by this component", writable = true)
@@ -118,27 +116,7 @@ public class RpcManagerImpl implements RpcManager {
       long commandSize;
       boolean exception_thrown=false;
       List<Response> result=null;
-      /*
-      if(rpcCommand instanceof PrepareCommand || rpcCommand instanceof PassiveReplicationCommand){
-          try{
-             ReplicableCommandExternalizer rce = new ReplicableCommandExternalizer();
-             ByteArrayOutputStream bStream = new ByteArrayOutputStream();
-             ObjectOutputStream oStream = new ObjectOutputStream( bStream );
-              ObjectOutputStreamMarshaller marsh= new ObjectOutputStreamMarshaller(oStream);
-             rce.writeObject(marsh,rpcCommand);
-             byte[] byteVal = bStream.toByteArray();
-             this.commandSize.addAndGet(byteVal.length);
-             this.numCommands.incrementAndGet();
-          }
-          catch(Exception e){
-              e.printStackTrace();
-              System.exit(0);
-          }
 
-
-
-      }
-     */
       if (members.size() < 2) {
          if (log.isDebugEnabled())
             log.debug("We're the only member in the cluster; Don't invoke remotely.");
@@ -186,7 +164,6 @@ public class RpcManagerImpl implements RpcManager {
                      avgReplayTime.addAndGet(maxReplayTime);
                      committedReplicationCount.incrementAndGet();
                      this.successfulRTT.getAndAdd(timeTaken-maxReplayTime);
-                     committedReplicationCount.incrementAndGet();
                }
                    else{
                      avgReplayTime.addAndGet(timeout*1000000); //timeout is in millis, stats are nanos
@@ -486,15 +463,19 @@ public class RpcManagerImpl implements RpcManager {
 
    @ManagedOperation(description = "Reset transport layer custom statistics")
    @Operation(displayName = "Reset custom stats")
-   public void resetStats(){
-      System.out.println("Sto resetthreadtando le statistiche");
+   public void resetTransportStats(){
+      log.warn("Resetting Transport-layer statistics");
+      //pre-existent ones
+      this.replicationCount.set(0);
+      this.replicationFailures.set(0);
+      this.totalReplicationTime.set(0);
+      //custom ones
       this.committedReplicationCount.set(0);
       this.txReplicationTime.set(0);
       this.txSuccessfulReplicationTime.set(0);
       this.successfulRTT.set(0);
       this.avgReplayTime.set(0);
       this.avgSuxReplayTime.set(0);
-
    }
 
     @ManagedAttribute(description = "Average successful replay time")
@@ -513,12 +494,7 @@ public class RpcManagerImpl implements RpcManager {
         return this.avgSuxReplayTime.get()/committedReplicationCount.get();
     }
 
-    @ManagedAttribute(description = "Average size of a PrepareCommand sent on the network")
-    public long getPrepareCommandSize(){
-        if(this.numCommands.get()==0)
-            return 0;
-        return this.commandSize.get()/numCommands.get();
-    }
+
 
 
    // mainly for unit testing

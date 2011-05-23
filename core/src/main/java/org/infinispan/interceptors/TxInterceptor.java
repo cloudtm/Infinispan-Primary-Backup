@@ -38,6 +38,7 @@ import org.rhq.helpers.pluginAnnotations.agent.MeasurementType;
 import org.rhq.helpers.pluginAnnotations.agent.Metric;
 import org.rhq.helpers.pluginAnnotations.agent.Operation;
 import org.rhq.helpers.pluginAnnotations.agent.Parameter;
+import org.infinispan.util.Histogram;
 
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
@@ -82,6 +83,7 @@ public class TxInterceptor extends CommandInterceptor {
 
 
 
+
    /*
    * Maybe we need a better management of the overflows?
    */
@@ -107,6 +109,9 @@ public class TxInterceptor extends CommandInterceptor {
       this.commandsFactory = commandsFactory;
       this.icc = icc;
       this.invoker = invoker;
+
+
+
       setStatisticsEnabled(configuration.isExposeJmxStatistics());
    }
 
@@ -338,6 +343,7 @@ public class TxInterceptor extends CommandInterceptor {
          if(statisticsEnabled && ctx.isInTxScope() && ctx.isOriginLocal()){
              this.numPuts.incrementAndGet();
          }
+
          rv = invokeNextInterceptor(ctx, command);
       }
       catch(Throwable th){
@@ -494,6 +500,12 @@ public class TxInterceptor extends CommandInterceptor {
    @ManagedOperation(description = "Resets all statistics relevant to Transactions")
    @Operation(displayName = "Reset Transactions' stats")
    public void resetTxStats(){
+       //pre-existent ones
+       this.prepares.set(0);
+       this.commits.set(0);
+       this.rollbacks.set(0);
+
+       //custom ones
        this.sumAvgTxReplayDuration.set(0);
        this.performedReplayedTx.set(0);
        this.wrt_tx_local_exec.set(0);
@@ -501,7 +513,14 @@ public class TxInterceptor extends CommandInterceptor {
        this.wrt_tx_commits.set(0);
        this.wrt_tx_started.set(0);
        this.wrt_tx_got_to_prepare.set(0);
-
+       this.commitTime.set(0);
+       this.numPuts.set(0);
+       this.rd_tx.set(0);
+       this.wrt_sux_tx_local_exec.set(0);
+       this.global_wrt_tx_commits.set(0);
+       this.sumAvgTxReplayDuration.set(0);
+       this.sumSuccessfulTxReplayDuration.set(0);
+       this.performedReplayedTx.set(0);
    }
 
    //SEBDIE
@@ -552,12 +571,24 @@ public class TxInterceptor extends CommandInterceptor {
         return this.numPuts.get();
     }
 
+    @ManagedOperation(description =" Reset number of performed put operations")
+    public void resetNumPuts(){
+        this.numPuts.set(0);
+    }
+
     @ManagedAttribute(description = "Time spent to handle a commit command")
     public long getCommitTime(){
         if(this.wrt_tx_commits.get()==0)
             return 0;
         return this.commitTime.get()/wrt_tx_commits.get();
     }
+
+    @ManagedAttribute(description = "Number of write transaction commited system-wide ")
+    public long getGlobalWriteCommits(){
+        return this.global_wrt_tx_commits.get();
+    }
+
+
 
    /**
     * Designed to be overridden.  Returns a VisitableCommand fit for replaying locally, based on the modification passed
