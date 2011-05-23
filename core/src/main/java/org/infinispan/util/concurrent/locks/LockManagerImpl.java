@@ -91,7 +91,7 @@ public class LockManagerImpl implements LockManager {
     private AtomicLong abortedLocalTransaction = new AtomicLong(0);
     private AtomicLong abortedRemoteTransaction = new AtomicLong(0);
 
-    private GlobalHistogram histo = new GlobalHistogram(1,10000,10);
+    private GlobalHistogram histo = null;//new GlobalHistogram(1,10000,10);
 
    @Inject
    public void injectDependencies(Configuration configuration, TransactionManager transactionManager, InvocationContextContainer invocationContextContainer) {
@@ -303,12 +303,14 @@ public class LockManagerImpl implements LockManager {
 
 
     public void insertSample(Object key, long time){
-        this.histo.insertSample(time,key);
+        if(histo!=null)
+            this.histo.insertSample(time,key);
     }
 
     @ManagedOperation
     public void dumpHistogram(){
-        this.histo.dumpHistogram();
+        if(histo!=null)
+             this.histo.dumpHistogram();
     }
 
 
