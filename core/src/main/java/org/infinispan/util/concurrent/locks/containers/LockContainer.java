@@ -60,6 +60,6 @@ public interface LockContainer {
     */
    void releaseLock(Object key);
 
-   long holdTime(Object key);
+
 
 }

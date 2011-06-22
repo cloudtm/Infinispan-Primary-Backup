@@ -39,11 +39,6 @@ public abstract class AbstractStripedLockContainer implements LockContainer {
    private int lockSegmentMask;
    private int lockSegmentShift;
 
-   //DIE : not supported for stripedLocks
-   public long holdTime(Object key){
-       return 0;
-   }
-
 
    final int calculateNumberOfSegments(int concurrencyLevel) {
       int tempLockSegShift = 0;

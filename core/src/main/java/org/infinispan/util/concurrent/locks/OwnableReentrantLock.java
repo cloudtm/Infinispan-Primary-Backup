@@ -48,9 +48,7 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
 
    private static final long serialVersionUID = 4932974734462848792L;
 
-   transient long holdTime=0;
-   transient boolean already_held=false;
-   transient boolean already_queried=false;
+
 
 
    /**
@@ -74,27 +72,6 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
       this.icc = icc;
    }
 
-    //DIE
-    public void hold(){
-        //Se locko un oggetto già esistente nel container, devo ripristinargli l'already held
-        if(already_held)
-            System.out.println("Chiamata la funzione hold due volte. Il proprietario è "+getOwner()+"  e il richiedente è "+currentRequestor());
-        already_held=true;
-        holdTime=System.nanoTime();
-    }
-
-    public long holdTime(){
-        if(!already_held){
-            System.out.println("Chiamata holdTime con already_hel=false");
-            //System.exit(0);
-        }
-        if(already_queried){
-            System.out.println("Chiamata holdTime() due volte senza una release in mezzo! Proprietario "+getOwner()+" invocante "+currentRequestor());
-        }
-        already_queried=true;
-        long heldTime=System.nanoTime()-holdTime;
-         return heldTime;
-    }
 
    /**
     * @return a GlobalTransaction instance if the current call is participating in a transaction, or the current thread
@@ -145,8 +122,7 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
       int c = getState();
       if (c == 0) {
          if (compareAndSetState(0, acquires)) {
-             //DIE
-            hold();
+
 
             owner = current;
             return true;
@@ -170,10 +146,7 @@ public class OwnableReentrantLock extends AbstractQueuedSynchronizer implements 
       if (c == 0) {
          free = true;
          owner = null;
-         //DIE
-         already_held=false;
-         already_queried=false;
-         holdTime=0;
+
       }
       setState(c);
       return free;

@@ -304,10 +304,7 @@ public class LockingInterceptor extends CommandInterceptor {
    @Override
    public Object visitPutKeyValueCommand(InvocationContext ctx, PutKeyValueCommand command) throws Throwable {
       try {
-          //DIE
-          if(ctx.isInTxScope()){
-              //((LockManagerImpl)this.lockManager).insertSample(command.getKey(),System.nanoTime()/1000000);//it wants msec
-          }
+
          entryFactory.wrapEntryForWriting(ctx, command.getKey(), true, false, false, false, !command.isPutIfAbsent());
 
           return invokeNextInterceptor(ctx, command);
@@ -396,9 +393,7 @@ public class LockingInterceptor extends CommandInterceptor {
    }
 
    private void cleanupLocks(InvocationContext ctx, boolean commit) {
-       //DIE
-       long holdTime=0;
-       int heldCount=0;
+
        if (commit) {
 
          Object owner = ctx.getLockOwner();
@@ -419,19 +414,9 @@ public class LockingInterceptor extends CommandInterceptor {
 
             // and then unlock
             if (needToUnlock && !ctx.hasFlag(Flag.SKIP_LOCKING)) {
-
-               if(ctx.isInTxScope() && lockManager.ownsLock(key,owner)){
-                  holdTime+=lockManager.holdTime(key);
-                 heldCount++;
-               }
                lockManager.unlock(key);
             }
          }
-         //averaging the lock hold time
-         if(ctx.isInTxScope() && heldCount>0){
-           holdTime/=heldCount;
-         }
-
 
 
           /**
@@ -449,16 +434,8 @@ public class LockingInterceptor extends CommandInterceptor {
 
       } else {
          lockManager.releaseLocks(ctx);
-         //DIE
-         if(ctx.isInTxScope())
-             holdTime=((TxInvocationContext)ctx).getAbortedHoldTime();
+
       }
-
-       if(ctx.isInTxScope()){
-
-           LockManagerImpl actualLockManager=(LockManagerImpl)this.lockManager;
-           actualLockManager.updateHoldTime((TxInvocationContext)ctx, holdTime,commit);
-       }
    }
 
    private Object cleanLocksAndRethrow(InvocationContext ctx, Throwable te) throws Throwable {

@@ -478,7 +478,7 @@ public class RpcManagerImpl implements RpcManager {
       this.avgSuxReplayTime.set(0);
    }
 
-    @ManagedAttribute(description = "Average successful replay time")
+    @ManagedAttribute(description = "Average replay time")
     public long getAvgReplayTime(){
         if(this.committedReplicationCount.get()==0){
             return 0;
